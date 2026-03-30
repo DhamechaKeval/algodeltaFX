@@ -13,12 +13,10 @@ import {
   Platform,
   Image,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../hooks/useAuth';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
-
-const BASE_URL = 'https://api.algodeltafx.com/api/v1';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -26,8 +24,9 @@ export default function LoginScreen({ navigation }) {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { handleLogin } = useAuth();
 
-  const handleLogin = async () => {
+  const onPressLogin = async () => {
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter your email address.');
       return;
@@ -37,38 +36,12 @@ export default function LoginScreen({ navigation }) {
       return;
     }
     setLoading(true);
-    try {
-      const response = await fetch(`${BASE_URL}/auth/userlogin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: '*/*',
-          Origin: 'https://www.algodeltafx.com',
-          Referer: 'https://www.algodeltafx.com/',
-        },
-        body: JSON.stringify({
-          domain: 'https://www.algodeltafx.com',
-          email: email.trim(),
-          password,
-        }),
-      });
-      const data = await response.json();
-      if (data?.status === true && data?.token) {
-        await AsyncStorage.setItem('token', data.token);
-        navigation.replace('Main');
-        return;
-      }
-      Alert.alert(
-        'Login Failed',
-        data?.message || data?.error || 'Please check your credentials.',
-      );
-    } catch (error) {
-      Alert.alert(
-        'Error',
-        'Network error. Please check your internet connection.',
-      );
-    } finally {
-      setLoading(false);
+    const result = await handleLogin(email, password);
+    setLoading(false);
+    if (result.success) {
+      navigation.replace('Main');
+    } else {
+      Alert.alert('Login Failed', result.message);
     }
   };
 
@@ -92,7 +65,7 @@ export default function LoginScreen({ navigation }) {
         </View>
 
         {/* Card */}
-        <View >
+        <View>
           <Text style={styles.title}>SIGN IN</Text>
           <Text style={styles.subtitle}>Welcome Back</Text>
           <Text style={styles.subtitleSub}>
@@ -155,7 +128,7 @@ export default function LoginScreen({ navigation }) {
           {/* Button */}
           <TouchableOpacity
             style={[styles.btn, loading && styles.btnDisabled]}
-            onPress={handleLogin}
+            onPress={onPressLogin}
             disabled={loading}
           >
             {loading ? (

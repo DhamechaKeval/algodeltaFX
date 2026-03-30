@@ -4,7 +4,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthNavigator from './AuthNavigator';
-import MainScreen from '../screens/MainScreen';
+import BottomTabNavigator from './BottomTabNavigator';
 import { colors } from '../theme/colors';
 
 const Stack = createNativeStackNavigator();
@@ -21,7 +21,7 @@ export default function AppNavigator() {
     try {
       const token = await AsyncStorage.getItem('token');
       setIsLoggedIn(!!token);
-    } catch (e) {
+    } catch {
       setIsLoggedIn(false);
     } finally {
       setIsLoading(false);
@@ -43,7 +43,7 @@ export default function AppNavigator() {
         initialRouteName={isLoggedIn ? 'Main' : 'Auth'}
       >
         <Stack.Screen name="Auth" component={AuthNavigator} />
-        <Stack.Screen name="Main" component={MainScreen} />
+        <Stack.Screen name="Main" component={BottomTabNavigator} />
       </Stack.Navigator>
     </NavigationContainer>
   );

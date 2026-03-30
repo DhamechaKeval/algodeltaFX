@@ -1,33 +1,14 @@
-import api from './api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {apiPost} from './api';
 
-export const loginUser = async (email, password) => {
-  const response = await api.post('/auth/userlogin', {
-    domain: 'https://www.algodeltafx.com',
-    email,
-    password,
-  });
-  return response.data;
-};
+const DOMAIN = 'https://www.algodeltafx.com';
 
-export const saveToken = async token => {
-  await AsyncStorage.setItem('token', token);
-};
-
-export const getToken = async () => {
-  return await AsyncStorage.getItem('token');
-};
-
-export const removeToken = async () => {
-  await AsyncStorage.removeItem('token');
-  await AsyncStorage.removeItem('user');
-};
-
-export const saveUser = async user => {
-  await AsyncStorage.setItem('user', JSON.stringify(user));
-};
-
-export const getUser = async () => {
-  const user = await AsyncStorage.getItem('user');
-  return user ? JSON.parse(user) : null;
-};
+/**
+ * Login
+ * Returns: { status: true, token: '...' }
+ */
+export const login = (email, password) =>
+  apiPost(
+    '/auth/userlogin',
+    {domain: DOMAIN, email, password},
+    false, // no auth token needed for login
+  );

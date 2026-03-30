@@ -1,0 +1,159 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  StatusBar,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+} from 'react-native';
+import { colors } from '../../theme/colors';
+import { typography } from '../../theme/typography';
+import { spacing } from '../../theme/spacing';
+
+export default function ForgotPasswordScreen({ navigation }) {
+  const [email, setEmail] = useState('');
+
+  const handleSetPassword = () => {
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter your email address.');
+      return;
+    }
+    Alert.alert(
+      'Email Sent',
+      'If this email is registered, you will receive a password reset OTP shortly.',
+      [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
+    );
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.logoWrap}>
+          <Image
+            source={require('../../assets/algodeltafx_com_horizontal_logo.jpg')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+
+        <Text style={styles.lockIcon}>🔐</Text>
+
+        <View>
+          <Text style={styles.title}>Set New Password</Text>
+          <Text style={styles.subtitleSub}>
+            Please create new password and verify with OTP.
+          </Text>
+
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter email"
+            placeholderTextColor={colors.textPlaceholder}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <TouchableOpacity style={styles.btn} onPress={handleSetPassword}>
+            <Text style={styles.btnText}>Set New Password</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.backRow}
+            onPress={() => navigation.navigate('Login')}
+          >
+            <Text style={styles.backText}>← Back to Login</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1, backgroundColor: colors.bg },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xxxl,
+  },
+  logoWrap: { alignItems: 'center', marginBottom: spacing.lg },
+  logo: { width: 200, height: 60 },
+  lockIcon: {
+    fontSize: spacing.icon.xxl,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  card: {
+    backgroundColor: colors.bgCard,
+    borderRadius: spacing.radius.xl,
+    padding: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  title: {
+    fontSize: typography.xl,
+    fontWeight: typography.extrabold,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  subtitleSub: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+    lineHeight: 18,
+  },
+  label: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
+    fontWeight: typography.semibold,
+    marginBottom: spacing.sm,
+  },
+  input: {
+    backgroundColor: colors.bgInput,
+    borderWidth: 1,
+    borderColor: colors.bgInputBorder,
+    borderRadius: spacing.radius.md,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+    fontSize: typography.md,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
+  },
+  btn: {
+    backgroundColor: colors.primary,
+    borderRadius: spacing.radius.md,
+    paddingVertical: spacing.base - 1,
+    alignItems: 'center',
+    marginBottom: spacing.base,
+  },
+  btnText: {
+    fontSize: typography.base,
+    fontWeight: typography.extrabold,
+    color: colors.primaryText,
+  },
+  backRow: { alignItems: 'center' },
+  backText: {
+    fontSize: typography.sm + 1,
+    color: colors.primary,
+    fontWeight: typography.semibold,
+  },
+});

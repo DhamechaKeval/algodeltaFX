@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,8 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  Platform,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import AppHeader from '../../components/common/AppHeader';
@@ -20,8 +21,14 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import {
+  COUNTRIES,
+  getDialCode,
+  getCountryByName,
+} from '../../utils/countries';
+import {
   getUserProfile,
   updateUserProfile,
+  getProfilePhotoUrl,
 } from '../../services/profileService';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -35,10 +42,15 @@ export default function ProfileScreen({ navigation }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showAge, setShowAge] = useState(false);
+  const [showCountry, setShowCountry] = useState(false);
+  const [countryQ, setCountryQ] = useState('');
+  const [focusedField, setFocusedField] = useState(null);
+  const [photoUrl, setPhotoUrl] = useState(null);
 
   const [fullName, setFullName] = useState('');
   const [ageRange, setAgeRange] = useState('');
   const [country, setCountry] = useState('');
+  const [dialCode, setDialCode] = useState('+91');
   const [state, setState_] = useState('');
   const [city, setCity] = useState('');
   const [pincode, setPincode] = useState('');
@@ -50,21 +62,26 @@ export default function ProfileScreen({ navigation }) {
     setFullName(d?.full_name || '');
     setAgeRange(d?.age_range || '');
     setCountry(d?.country || '');
+    setDialCode(getDialCode(d?.country));
     setState_(d?.state || '');
     setCity(d?.city || '');
     setPincode(String(d?.pincode || ''));
     setMobileNo(String(d?.mobile_no || ''));
-    setImageUri(d?.profile_url || d?.profile || null);
+    setImageUri(null); // loaded separately from photo URL
   };
 
   const fetchProfile = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await getUserProfile();
+      const [res, url] = await Promise.all([
+        getUserProfile(),
+        getProfilePhotoUrl(),
+      ]);
       if (res?.status === true && res?.data) {
         setProfile(res.data);
         fillForm(res.data);
       }
+      if (url) setPhotoUrl(url);
     } catch (e) {
       Alert.alert('Error', e?.message || 'Failed to load profile.');
     } finally {
@@ -76,6 +93,26 @@ export default function ProfileScreen({ navigation }) {
     fetchProfile();
   }, [fetchProfile]);
 
+  // ── Country selected → clear location fields + update dial code ──
+  const handleSelectCountry = c => {
+    setCountry(c.name);
+    setDialCode(c.dial);
+    // Auto-clear location fields
+    setState_('');
+    setCity('');
+    setPincode('');
+    setMobileNo('');
+    setShowCountry(false);
+    setCountryQ('');
+  };
+
+  const filteredCountries = countryQ.trim()
+    ? COUNTRIES.filter(c =>
+        c.name.toLowerCase().includes(countryQ.toLowerCase()),
+      )
+    : COUNTRIES;
+
+  // ── Pick image ────────────────────────────────────────────────
   const handlePickImage = () => {
     if (!editing) return;
     launchImageLibrary(
@@ -91,6 +128,7 @@ export default function ProfileScreen({ navigation }) {
     );
   };
 
+  // ── Save ──────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!fullName.trim()) {
       Alert.alert('Error', 'Full name is required.');
@@ -105,7 +143,7 @@ export default function ProfileScreen({ navigation }) {
       fd.append('age_range', ageRange);
       fd.append('pincode', pincode.trim());
       fd.append('mobile_no', mobileNo.trim());
-      fd.append('country', country.trim());
+      fd.append('country', country.trim().toUpperCase());
       if (imageFile) {
         fd.append('profile', {
           uri: imageFile.uri,
@@ -134,7 +172,11 @@ export default function ProfileScreen({ navigation }) {
     setImageFile(null);
     setEditing(false);
     setShowAge(false);
+    setShowCountry(false);
   };
+
+  // Display image: picked > photoUrl
+  const displayImage = imageUri || photoUrl;
 
   if (loading) {
     return (
@@ -168,280 +210,402 @@ export default function ProfileScreen({ navigation }) {
         <Text style={s.pageTitle}>Profile</Text>
 
         <View style={s.card}>
-          <View>
-            {/* ── Avatar Row ── */}
-            <View style={s.avatarRow}>
-              <TouchableOpacity
-                onPress={handlePickImage}
-                activeOpacity={editing ? 0.7 : 1}
-                style={s.avatarWrap}
-              >
-                {imageUri ? (
-                  <Image source={{ uri: imageUri }} style={s.avatar} />
-                ) : (
-                  <View style={s.avatarPlaceholder}>
-                    <Icon
-                      name="profile"
-                      size={36}
-                      color={colors.textMuted}
-                      strokeWidth={1.2}
-                    />
-                  </View>
-                )}
-                {editing && (
-                  <View style={s.avatarBadge}>
-                    <Icon
-                      name="plus"
-                      size={12}
-                      color={colors.primaryText}
-                      strokeWidth={2.5}
-                    />
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              <View style={{ flex: 1, gap: spacing.xs }}>
-                {editing && (
-                  <TouchableOpacity
-                    style={s.uploadBtn}
-                    onPress={handlePickImage}
-                  >
-                    <Icon
-                      name="download"
-                      size={13}
-                      color={colors.primaryText}
-                      strokeWidth={2}
-                    />
-                    <Text style={s.uploadBtnTxt}>Upload Image</Text>
-                  </TouchableOpacity>
-                )}
-                <Text style={s.uploadHint}>
-                  Allowed JPG, JPEG or PNG. Max size of 1 MB
-                </Text>
-                {profile?.email && (
-                  <Text style={s.emailTxt}>{profile.email}</Text>
-                )}
-              </View>
-            </View>
-
-            <View style={s.divider} />
-
-            {/* ── Form ── */}
-
-            {/* Full Name */}
-            <Field label="Full Name">
-              <TextInput
-                style={[s.input, !editing && s.inputRO]}
-                value={fullName}
-                onChangeText={setFullName}
-                editable={editing}
-                placeholder="Enter Full Name"
-                placeholderTextColor={colors.textPlaceholder}
-              />
-            </Field>
-
-            {/* Age Range + Country */}
-            <View style={s.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.label}>Age Range</Text>
-                <TouchableOpacity
-                  style={[s.input, s.rowCenter, !editing && s.inputRO]}
-                  onPress={() => editing && setShowAge(v => !v)}
-                  activeOpacity={editing ? 0.7 : 1}
-                >
-                  <Text
-                    style={[
-                      s.inputTxt,
-                      !ageRange && { color: colors.textPlaceholder },
-                    ]}
-                  >
-                    {ageRange ? `${ageRange} years` : 'Select Age Range'}
-                  </Text>
-                  {editing && (
-                    <Icon
-                      name="chevron-down"
-                      size={14}
-                      color={colors.textSecondary}
-                    />
-                  )}
-                </TouchableOpacity>
-                {showAge && editing && (
-                  <View style={s.dropdown}>
-                    {AGE_RANGES.map((a, i) => (
-                      <TouchableOpacity
-                        key={a}
-                        style={[
-                          s.dropItem,
-                          i === AGE_RANGES.length - 1 && {
-                            borderBottomWidth: 0,
-                          },
-                          ageRange === a && s.dropActive,
-                        ]}
-                        onPress={() => {
-                          setAgeRange(a);
-                          setShowAge(false);
-                        }}
-                      >
-                        <Text
-                          style={[
-                            s.dropTxt,
-                            ageRange === a && { color: colors.primary },
-                          ]}
-                        >
-                          {a} years
-                        </Text>
-                        {ageRange === a && (
-                          <Icon
-                            name="check"
-                            size={14}
-                            color={colors.primary}
-                            strokeWidth={2.5}
-                          />
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Field label="Country">
-                  <TextInput
-                    style={[s.input, !editing && s.inputRO]}
-                    value={country}
-                    onChangeText={setCountry}
-                    editable={editing}
-                    placeholder="Country"
-                    placeholderTextColor={colors.textPlaceholder}
-                    autoCapitalize="characters"
-                  />
-                </Field>
-              </View>
-            </View>
-
-            {/* State + City + Pincode */}
-            <View style={s.row}>
-              <View style={{ flex: 1 }}>
-                <Field label="State">
-                  <TextInput
-                    style={[s.input, !editing && s.inputRO]}
-                    value={state}
-                    onChangeText={setState_}
-                    editable={editing}
-                    placeholder="State"
-                    placeholderTextColor={colors.textPlaceholder}
-                    autoCapitalize="characters"
-                  />
-                </Field>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Field label="City">
-                  <TextInput
-                    style={[s.input, !editing && s.inputRO]}
-                    value={city}
-                    onChangeText={setCity}
-                    editable={editing}
-                    placeholder="City"
-                    placeholderTextColor={colors.textPlaceholder}
-                    autoCapitalize="characters"
-                  />
-                </Field>
-              </View>
-              <View style={{ flex: 0.8 }}>
-                <Field label="Pincode">
-                  <TextInput
-                    style={[s.input, !editing && s.inputRO]}
-                    value={pincode}
-                    onChangeText={setPincode}
-                    editable={editing}
-                    placeholder="Pincode"
-                    placeholderTextColor={colors.textPlaceholder}
-                    keyboardType="numeric"
-                  />
-                </Field>
-              </View>
-            </View>
-
-            {/* Mobile */}
-            <Field label="Mobile Number">
-              <View style={[s.input, s.mobileWrap, !editing && s.inputRO]}>
-                <Text style={s.prefix}>+91</Text>
-                <View style={s.prefixDivider} />
-                <TextInput
-                  style={s.mobileInput}
-                  value={mobileNo}
-                  onChangeText={setMobileNo}
-                  editable={editing}
-                  placeholder="Enter Mobile Number"
-                  placeholderTextColor={colors.textPlaceholder}
-                  keyboardType="phone-pad"
+          {/* ── Avatar ── */}
+          <View style={s.avatarRow}>
+            <TouchableOpacity
+              onPress={handlePickImage}
+              activeOpacity={editing ? 0.7 : 1}
+              style={s.avatarWrap}
+            >
+              {displayImage ? (
+                <Image
+                  source={{ uri: displayImage }}
+                  style={s.avatar}
+                  onError={() => setPhotoUrl(null)}
                 />
-              </View>
-            </Field>
-
-            {/* Edit / Save buttons */}
-            <View style={{ marginTop: spacing.md, alignItems: 'flex-end' }}>
-              {!editing ? (
-                <TouchableOpacity
-                  style={s.editBtn}
-                  onPress={() => setEditing(true)}
-                >
-                  <Icon
-                    name="settings"
-                    size={16}
-                    color={colors.primaryText}
-                    strokeWidth={3}
-                  />
-                  <Text style={s.editBtnTxt}>Edit</Text>
-                </TouchableOpacity>
               ) : (
-                <View style={s.saveRow}>
-                  <Button
-                    label="Cancel"
-                    variant="outline"
-                    onPress={handleCancel}
-                    style={{ flex: 1 }}
-                  />
-                  <Button
-                    label="Save Changes"
-                    variant="primary"
-                    onPress={handleSave}
-                    loading={saving}
-                    style={{ flex: 1 }}
+                <View style={s.avatarPlaceholder}>
+                  <Icon
+                    name="profile"
+                    size={36}
+                    color={colors.textMuted}
+                    strokeWidth={1.2}
                   />
                 </View>
+              )}
+              {editing && (
+                <View style={s.avatarBadge}>
+                  <Icon
+                    name="plus"
+                    size={12}
+                    color={colors.primaryText}
+                    strokeWidth={2.5}
+                  />
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <View style={{ flex: 1, gap: spacing.xs }}>
+              {editing && (
+                <TouchableOpacity style={s.uploadBtn} onPress={handlePickImage}>
+                  <Icon
+                    name="download"
+                    size={13}
+                    color={colors.primaryText}
+                    strokeWidth={2}
+                  />
+                  <Text style={s.uploadBtnTxt}>Upload Image</Text>
+                </TouchableOpacity>
+              )}
+              <Text style={s.uploadHint}>
+                Allowed JPG, JPEG or PNG. Max size of 1 MB
+              </Text>
+              {profile?.email && (
+                <Text style={s.emailTxt}>{profile.email}</Text>
               )}
             </View>
           </View>
 
-          {/* Logout */}
-          <TouchableOpacity
-            style={s.logoutBtn}
-            onPress={() =>
-              Alert.alert('Logout', 'Are you sure you want to logout?', [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Logout',
-                  style: 'destructive',
-                  onPress: () => handleLogout(navigation),
-                },
-              ])
-            }
-          >
-            <Icon
-              name="logout"
-              size={16}
-              color={colors.error}
-              strokeWidth={2}
+          <View style={s.divider} />
+
+          {/* Full Name */}
+          <Field label="Full Name">
+            <TextInput
+              style={[s.input, !editing && s.inputRO]}
+              value={fullName}
+              onChangeText={setFullName}
+              editable={editing}
+              placeholder="Enter Full Name"
+              placeholderTextColor={colors.textPlaceholder}
             />
-            <Text style={s.logoutTxt}>Logout</Text>
-          </TouchableOpacity>
+          </Field>
+
+          {/* Age Range + Country (same row) */}
+          <View style={s.row}>
+            {/* Age Range */}
+            <View style={{ flex: 1 }}>
+              <Text style={s.label}>Age Range</Text>
+              <TouchableOpacity
+                style={[s.input, s.rowCenter, !editing && s.inputRO]}
+                onPress={() => editing && setShowAge(v => !v)}
+                activeOpacity={editing ? 0.7 : 1}
+              >
+                <Text
+                  style={[
+                    s.inputTxt,
+                    !ageRange && { color: colors.textPlaceholder },
+                  ]}
+                >
+                  {ageRange ? `${ageRange} years` : 'Select Age Range'}
+                </Text>
+                {editing && (
+                  <Icon
+                    name="chevron-down"
+                    size={14}
+                    color={colors.textSecondary}
+                  />
+                )}
+              </TouchableOpacity>
+              {showAge && editing && (
+                <View style={s.inlineDropdown}>
+                  {AGE_RANGES.map((a, i) => (
+                    <TouchableOpacity
+                      key={a}
+                      style={[
+                        s.dropItem,
+                        i === AGE_RANGES.length - 1 && { borderBottomWidth: 0 },
+                        ageRange === a && s.dropActive,
+                      ]}
+                      onPress={() => {
+                        setAgeRange(a);
+                        setShowAge(false);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          s.dropTxt,
+                          ageRange === a && { color: colors.primary },
+                        ]}
+                      >
+                        {a} years
+                      </Text>
+                      {ageRange === a && (
+                        <Icon
+                          name="check"
+                          size={14}
+                          color={colors.primary}
+                          strokeWidth={2.5}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            {/* Country — opens full modal */}
+            <View style={{ flex: 1 }}>
+              <Text style={s.label}>Country</Text>
+              <TouchableOpacity
+                style={[s.input, s.rowCenter, !editing && s.inputRO]}
+                onPress={() => editing && setShowCountry(true)}
+                activeOpacity={editing ? 0.7 : 1}
+              >
+                <Text
+                  style={[
+                    s.inputTxt,
+                    !country && { color: colors.textPlaceholder },
+                  ]}
+                >
+                  {country || 'Select Country'}
+                </Text>
+                {editing && (
+                  <Icon
+                    name="chevron-down"
+                    size={14}
+                    color={colors.textSecondary}
+                  />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* State + City + Pincode */}
+          <View style={s.row}>
+            <View style={{ flex: 1 }}>
+              <Field label="State">
+                <TextInput
+                  style={[
+                    s.input,
+                    !editing && s.inputRO,
+                    editing && focusedField === 'state' && s.inputFocused,
+                  ]}
+                  value={state}
+                  onChangeText={setState_}
+                  editable={editing}
+                  placeholder="State"
+                  placeholderTextColor={colors.textPlaceholder}
+                  autoCapitalize="characters"
+                  onFocus={() => setFocusedField('state')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </Field>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Field label="City">
+                <TextInput
+                  style={[
+                    s.input,
+                    !editing && s.inputRO,
+                    editing && focusedField === 'city' && s.inputFocused,
+                  ]}
+                  value={city}
+                  onChangeText={setCity}
+                  editable={editing}
+                  placeholder="City"
+                  placeholderTextColor={colors.textPlaceholder}
+                  autoCapitalize="characters"
+                  onFocus={() => setFocusedField('city')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </Field>
+            </View>
+            <View style={{ flex: 0.8 }}>
+              <Field label="Pincode">
+                <TextInput
+                  style={[
+                    s.input,
+                    !editing && s.inputRO,
+                    editing && focusedField === 'pincode' && s.inputFocused,
+                  ]}
+                  value={pincode}
+                  onChangeText={setPincode}
+                  editable={editing}
+                  placeholder="000000"
+                  placeholderTextColor={colors.textPlaceholder}
+                  keyboardType="numeric"
+                  onFocus={() => setFocusedField('pincode')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </Field>
+            </View>
+          </View>
+
+          {/* Mobile Number with dynamic dial code */}
+          <Field label="Mobile Number">
+            <View style={[s.input, s.mobileWrap, !editing && s.inputRO]}>
+              <Text style={s.prefix}>{dialCode}</Text>
+              <View style={s.prefixDivider} />
+              <TextInput
+                style={s.mobileInput}
+                value={mobileNo}
+                onChangeText={setMobileNo}
+                editable={editing}
+                placeholder="Enter Mobile Number"
+                placeholderTextColor={colors.textPlaceholder}
+                keyboardType="phone-pad"
+                onFocus={() => setFocusedField('mobile')}
+                onBlur={() => setFocusedField(null)}
+              />
+            </View>
+          </Field>
+
+          {/* Edit / Save */}
+          <View style={{ marginTop: spacing.md, alignItems: 'flex-end' }}>
+            {!editing ? (
+              <TouchableOpacity
+                style={s.editBtn}
+                onPress={() => setEditing(true)}
+              >
+                <Icon
+                  name="settings"
+                  size={14}
+                  color={colors.primaryText}
+                  strokeWidth={2}
+                />
+                <Text style={s.editBtnTxt}>Edit</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={s.saveRow}>
+                <Button
+                  label="Cancel"
+                  variant="outline"
+                  onPress={handleCancel}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  label="Save Changes"
+                  variant="primary"
+                  onPress={handleSave}
+                  loading={saving}
+                  style={{ flex: 1.5 }}
+                />
+              </View>
+            )}
+          </View>
         </View>
+
+        {/* Spacer pushes logout to bottom */}
+        <View style={{ flex: 1, minHeight: spacing.xxl }} />
+
+        {/* Logout — always at bottom */}
+        <TouchableOpacity
+          style={s.logoutBtn}
+          onPress={() =>
+            Alert.alert('Logout', 'Are you sure you want to logout?', [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Logout',
+                style: 'destructive',
+                onPress: () => handleLogout(navigation),
+              },
+            ])
+          }
+        >
+          <Icon name="logout" size={16} color={colors.error} strokeWidth={2} />
+          <Text style={s.logoutTxt}>Logout</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      {/* ── Country Picker Modal ── */}
+      <Modal
+        visible={showCountry}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCountry(false)}
+      >
+        <View style={cm.overlay}>
+          <View style={cm.sheet}>
+            <View style={cm.header}>
+              <Text style={cm.title}>Select Country</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowCountry(false);
+                  setCountryQ('');
+                }}
+              >
+                <Icon
+                  name="x"
+                  size={20}
+                  color={colors.textSecondary}
+                  strokeWidth={2}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search */}
+            <View style={cm.searchBox}>
+              <Icon
+                name="search"
+                size={14}
+                color={colors.textMuted}
+                strokeWidth={1.8}
+              />
+              <TextInput
+                style={cm.searchInput}
+                placeholder="Search country..."
+                placeholderTextColor={colors.textPlaceholder}
+                value={countryQ}
+                onChangeText={setCountryQ}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              {countryQ.length > 0 && (
+                <TouchableOpacity onPress={() => setCountryQ('')}>
+                  <Icon
+                    name="x"
+                    size={13}
+                    color={colors.textMuted}
+                    strokeWidth={2}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <FlatList
+              data={filteredCountries}
+              keyExtractor={item => item.code}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const selected =
+                  country.toUpperCase() === item.name.toUpperCase();
+                return (
+                  <TouchableOpacity
+                    style={[cm.countryItem, selected && cm.countryActive]}
+                    onPress={() => handleSelectCountry(item)}
+                  >
+                    <Text
+                      style={[
+                        cm.countryName,
+                        selected && {
+                          color: colors.primary,
+                          fontWeight: '700',
+                        },
+                      ]}
+                    >
+                      {item.name}
+                    </Text>
+                    <Text style={cm.dialCode}>{item.dial}</Text>
+                    {selected && (
+                      <Icon
+                        name="check"
+                        size={16}
+                        color={colors.primary}
+                        strokeWidth={2.5}
+                      />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-// Helper wrapper
 function Field({ label, children }) {
   return (
     <View style={{ marginBottom: spacing.sm }}>
@@ -458,17 +622,7 @@ const s = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.base,
   },
-  card: {
-    flex: 1,
-    justifyContent: 'space-between',
-    //alignItems: 'flex-end',
-    //   backgroundColor: colors.bgCard,
-    //   borderRadius: spacing.radius.lg,
-    //   padding: spacing.base,
-    //   borderWidth: 1,
-    //   borderColor: colors.border,
-    //   marginBottom: spacing.base,
-  },
+  card: { marginBottom: spacing.base },
   divider: {
     height: 1,
     backgroundColor: colors.border,
@@ -478,16 +632,16 @@ const s = StyleSheet.create({
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.base },
   avatarWrap: { position: 'relative' },
   avatar: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: colors.primary,
   },
   avatarPlaceholder: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: colors.bgInput,
     borderWidth: 1,
     borderColor: colors.primary,
@@ -514,45 +668,43 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2,
     alignSelf: 'flex-start',
-    marginBottom: spacing.xs,
   },
   uploadBtnTxt: {
     fontSize: typography.xs + 1,
     fontWeight: '700',
     color: colors.primaryText,
   },
-  uploadHint: { fontSize: typography.xs + 2, color: colors.textMuted },
+  uploadHint: { fontSize: typography.xs, color: colors.textMuted },
   emailTxt: { fontSize: typography.xs + 1, color: colors.textSecondary },
 
   label: {
-    fontSize: typography.xs + 2,
+    fontSize: typography.xs + 1,
     color: colors.textSecondary,
     fontWeight: '600',
     marginBottom: spacing.xs,
   },
   input: {
     backgroundColor: colors.bgInput,
-    borderWidth: 0.3,
-    borderColor: colors.primary,
+    borderWidth: 0.5,
+    borderColor: colors.border,
     borderRadius: spacing.radius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.sm + 2,
     fontSize: typography.sm,
     color: colors.textPrimary,
-    marginBottom: 0,
   },
-  inputRO: { borderColor: 'transparent', opacity: 0.8 },
+  inputRO: { borderColor: 'transparent', opacity: 0.85 },
+  inputFocused: { borderColor: colors.primary, borderWidth: 1 },
   inputTxt: { flex: 1, fontSize: typography.sm, color: colors.textPrimary },
   rowCenter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-
   row: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
 
-  dropdown: {
-    backgroundColor: colors.bgInput,
+  inlineDropdown: {
+    backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: spacing.radius.md,
@@ -581,8 +733,9 @@ const s = StyleSheet.create({
   prefix: {
     fontSize: typography.sm,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontWeight: '700',
     paddingHorizontal: spacing.md,
+    minWidth: 52,
   },
   prefixDivider: { width: 1, height: 20, backgroundColor: colors.border },
   mobileInput: {
@@ -590,28 +743,24 @@ const s = StyleSheet.create({
     fontSize: typography.sm,
     color: colors.textPrimary,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm - 6,
+    paddingVertical: 0,
   },
 
   editBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
     backgroundColor: colors.primary,
     borderRadius: spacing.radius.sm,
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.sm,
   },
   editBtnTxt: {
-    fontSize: typography.base,
-    fontWeight: '800',
+    fontSize: typography.sm,
+    fontWeight: '700',
     color: colors.primaryText,
   },
-  saveRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    width: '100%',
-  },
+  saveRow: { flexDirection: 'row', gap: spacing.md, width: '100%' },
 
   logoutBtn: {
     flexDirection: 'row',
@@ -622,12 +771,76 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(239,68,68,0.25)',
     borderRadius: spacing.radius.md,
-    paddingVertical: spacing.md - 2,
-    marginTop: spacing.xl,
+    paddingVertical: spacing.md,
   },
   logoutTxt: {
-    fontSize: typography.base,
-    fontWeight: '800',
+    fontSize: typography.md,
+    fontWeight: '700',
     color: colors.error,
+  },
+});
+
+// Country Modal styles
+const cm = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: colors.bgCard,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    paddingBottom: spacing.xxl,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.base,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  title: {
+    fontSize: typography.lg,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.bgInput,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: spacing.radius.md,
+    marginHorizontal: spacing.base,
+    marginVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: typography.sm,
+    color: colors.textPrimary,
+    padding: 0,
+  },
+  countryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  countryActive: { backgroundColor: 'rgba(74,222,128,0.06)' },
+  countryName: { flex: 1, fontSize: typography.md, color: colors.textPrimary },
+  dialCode: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
+    marginRight: spacing.sm,
+    fontWeight: '600',
   },
 });

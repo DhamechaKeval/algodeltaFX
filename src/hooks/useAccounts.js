@@ -6,6 +6,7 @@ import {
   deleteAccount,
   updateTradingFlag,
   updateAutoRenew,
+  setSlTp,
   refreshAccount,
 } from '../services/accountService';
 
@@ -19,7 +20,7 @@ export const useAccounts = () => {
   const [showModal, setShowModal] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
 
-  // ── Fetch all accounts ────────────────────────────────────────
+  // ── Fetch all ─────────────────────────────────────────────────
   const fetchAccounts = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
@@ -59,8 +60,8 @@ export const useAccounts = () => {
     [accounts],
   );
 
-  // ── Update single account in local state (optimistic) ─────────
-  const updateLocalAccount = useCallback((broker_id, patch) => {
+  // ── Optimistic update helper ──────────────────────────────────
+  const updateLocal = useCallback((broker_id, patch) => {
     const apply = list =>
       list.map(a => (a.broker_id === broker_id ? { ...a, ...patch } : a));
     setAccounts(prev => apply(prev));
@@ -71,37 +72,56 @@ export const useAccounts = () => {
   const handleToggleTrading = useCallback(
     async (broker_id, current) => {
       const next = !current;
-      updateLocalAccount(broker_id, { main_trading_flag: next });
+      updateLocal(broker_id, { main_trading_flag: next });
       try {
         const res = await updateTradingFlag(broker_id, next);
         if (res?.status !== true) {
-          updateLocalAccount(broker_id, { main_trading_flag: current }); // rollback
+          updateLocal(broker_id, { main_trading_flag: current });
           Alert.alert('Error', res?.message || 'Failed to update trading.');
         }
-      } catch {
-        updateLocalAccount(broker_id, { main_trading_flag: current });
-        Alert.alert('Error', 'Network error. Please try again.');
+      } catch (e) {
+        updateLocal(broker_id, { main_trading_flag: current });
+        Alert.alert('Error', e?.message || 'Network error.');
       }
     },
-    [updateLocalAccount],
+    [updateLocal],
   );
 
-  // ── Toggle Day SL/TP ─────────────────────────────────────────
+  // ── Toggle Day SL/TP ──────────────────────────────────────────
   const handleToggleSlTp = useCallback(
     async (broker_id, current) => {
       const next = !current;
-      updateLocalAccount(broker_id, { is_sl_tp_set: next });
+      updateLocal(broker_id, { is_sl_tp_set: next });
       try {
         const res = await setSlTp(broker_id, next);
         if (res?.status !== true) {
-          updateLocalAccount(broker_id, { is_sl_tp_set: current });
+          updateLocal(broker_id, { is_sl_tp_set: current });
           Alert.alert('Error', res?.message || 'Failed to update SL/TP.');
         }
-      } catch {
-        updateLocalAccount(broker_id, { is_sl_tp_set: current });
+      } catch (e) {
+        updateLocal(broker_id, { is_sl_tp_set: current });
+        Alert.alert('Error', e?.message || 'Network error.');
       }
     },
-    [updateLocalAccount],
+    [updateLocal],
+  );
+
+  // ── Toggle Auto Renew ─────────────────────────────────────────
+  const handleToggleAutoRenew = useCallback(
+    async (broker_id, current) => {
+      const next = !current;
+      updateLocal(broker_id, { auto_renew: next });
+      try {
+        const res = await updateAutoRenew(broker_id, next);
+        if (res?.status !== true) {
+          updateLocal(broker_id, { auto_renew: current });
+          Alert.alert('Error', res?.message || 'Failed to update auto renew.');
+        }
+      } catch (e) {
+        updateLocal(broker_id, { auto_renew: current });
+      }
+    },
+    [updateLocal],
   );
 
   // ── Refresh single account ────────────────────────────────────
@@ -109,20 +129,20 @@ export const useAccounts = () => {
     async broker_id => {
       try {
         await refreshAccount(broker_id);
-        fetchAccounts(true);
-      } catch {
-        Alert.alert('Error', 'Failed to refresh account.');
+        await fetchAccounts(true);
+      } catch (e) {
+        Alert.alert('Error', e?.message || 'Failed to refresh account.');
       }
     },
     [fetchAccounts],
   );
 
-  // ── Delete account ────────────────────────────────────────────
+  // ── Delete ────────────────────────────────────────────────────
   const handleDeleteAccount = useCallback(
-    broker_id => {
+    (broker_id, name) => {
       Alert.alert(
         'Delete Account',
-        'Are you sure you want to delete this account?',
+        `Are you sure you want to delete "${name}"?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -136,8 +156,8 @@ export const useAccounts = () => {
                 } else {
                   Alert.alert('Error', res?.message || 'Failed to delete.');
                 }
-              } catch {
-                Alert.alert('Error', 'Network error. Please try again.');
+              } catch (e) {
+                Alert.alert('Error', e?.message || 'Network error.');
               }
             },
           },
@@ -162,8 +182,8 @@ export const useAccounts = () => {
           success: false,
           message: res?.message || 'Failed to add account.',
         };
-      } catch {
-        return { success: false, message: 'Network error. Please try again.' };
+      } catch (e) {
+        return { success: false, message: e?.message || 'Network error.' };
       } finally {
         setAddLoading(false);
       }
@@ -184,6 +204,7 @@ export const useAccounts = () => {
     handleSearch,
     handleToggleTrading,
     handleToggleSlTp,
+    handleToggleAutoRenew,
     handleRefreshAccount,
     handleDeleteAccount,
     handleAddAccount,

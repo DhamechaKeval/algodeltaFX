@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import Icon from '../components/common/Icon';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { spacing } from '../theme/spacing';
@@ -13,46 +14,38 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
-const TAB_ICONS = {
-  Accounts: { icon: '🏠', label: 'Accounts' },
-  CopyTrading: { icon: '📊', label: 'Copy Trade' },
-  Orders: { icon: '📋', label: 'Orders' },
-  Wallet: { icon: '💰', label: 'Wallet' },
-  Profile: { icon: '👤', label: 'Profile' },
-};
+const TABS = [
+  { name: 'Accounts', label: 'Accounts', icon: 'home' },
+  { name: 'CopyTrading', label: 'Copy Trade', icon: 'copy-trade' },
+  { name: 'Orders', label: 'Orders', icon: 'orders' },
+  { name: 'Wallet', label: 'Wallet', icon: 'wallet' },
+  { name: 'Profile', label: 'Profile', icon: 'profile' },
+];
 
-function CustomTabBar({ state, descriptors, navigation }) {
+function CustomTabBar({ state, navigation }) {
   return (
-    <View style={styles.tabBar}>
+    <View style={s.bar}>
       {state.routes.map((route, index) => {
-        const isFocused = state.index === index;
-        const { icon, label } = TAB_ICONS[route.name];
-
-        const onPress = () => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name);
-          }
-        };
+        const tab = TABS[index];
+        const focused = state.index === index;
+        const iconColor = focused ? colors.primary : colors.textMuted;
+        const labelColor = focused ? colors.primary : colors.textMuted;
 
         return (
           <TouchableOpacity
             key={route.key}
-            style={styles.tabItem}
-            onPress={onPress}
+            style={s.tab}
             activeOpacity={0.7}
+            onPress={() => navigation.navigate(route.name)}
           >
-            {isFocused && <View style={styles.activeBar} />}
-            <Text style={[styles.tabIcon, isFocused && styles.tabIconActive]}>
-              {icon}
-            </Text>
-            <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
-              {label}
-            </Text>
+            {focused && <View style={s.activeBar} />}
+            <Icon
+              name={tab.icon}
+              size={22}
+              color={iconColor}
+              strokeWidth={focused ? 2 : 1.6}
+            />
+            <Text style={[s.label, { color: labelColor }]}>{tab.label}</Text>
           </TouchableOpacity>
         );
       })}
@@ -75,8 +68,8 @@ export default function BottomTabNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
-  tabBar: {
+const s = StyleSheet.create({
+  bar: {
     flexDirection: 'row',
     backgroundColor: '#0d1526',
     borderTopWidth: 1,
@@ -85,7 +78,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
     height: 62,
   },
-  tabItem: {
+  tab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -100,12 +93,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: spacing.radius.full,
   },
-  tabIcon: { fontSize: spacing.icon.sm, marginBottom: 2 },
-  tabIconActive: {},
-  tabLabel: {
+  label: {
     fontSize: typography.xs,
-    color: colors.textMuted,
     fontWeight: typography.medium,
+    marginTop: 2,
   },
-  tabLabelActive: { color: colors.primary, fontWeight: typography.bold },
 });

@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  createNavigationContainerRef,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthNavigator from './AuthNavigator';
 import BottomTabNavigator from './BottomTabNavigator';
+import AccountDetailScreen from '../screens/accounts/AccountDetailScreen';
 import { colors } from '../theme/colors';
+import { setNavigatorRef } from '../services/api';
 
 const Stack = createNativeStackNavigator();
+export const navigationRef = createNavigationContainerRef();
 
 export default function AppNavigator() {
   const [isLoading, setIsLoading] = useState(true);
@@ -30,26 +36,30 @@ export default function AppNavigator() {
 
   if (isLoading) {
     return (
-      <View style={styles.splash}>
+      <View style={s.splash}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => setNavigatorRef(navigationRef)}
+    >
       <Stack.Navigator
         screenOptions={{ headerShown: false }}
         initialRouteName={isLoggedIn ? 'Main' : 'Auth'}
       >
         <Stack.Screen name="Auth" component={AuthNavigator} />
         <Stack.Screen name="Main" component={BottomTabNavigator} />
+        <Stack.Screen name="AccountDetail" component={AccountDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   splash: {
     flex: 1,
     backgroundColor: colors.bg,

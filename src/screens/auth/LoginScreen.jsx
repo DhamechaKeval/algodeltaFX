@@ -17,6 +17,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import Icon from '../../components/common/Icon';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -97,11 +98,17 @@ export default function LoginScreen({ navigation }) {
               secureTextEntry={!showPassword}
               autoCapitalize="none"
             />
+
             <TouchableOpacity
               style={styles.eyeBtn}
               onPress={() => setShowPassword(v => !v)}
             >
-              <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
+              <Icon
+                name={showPassword ? 'eye-off' : 'eye'}
+                size={18}
+                color={colors.textMuted}
+                strokeWidth={1.8}
+              />
             </TouchableOpacity>
           </View>
 

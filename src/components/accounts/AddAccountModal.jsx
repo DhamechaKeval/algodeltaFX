@@ -7,12 +7,15 @@ import {
   Switch,
   ScrollView,
   Alert,
+  StyleSheet,
 } from 'react-native';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { accountStyles } from '../../styles/accounts.styles';
+import { colors } from '../../theme/colors';
+import { typography } from '../../theme/typography';
+import { spacing } from '../../theme/spacing';
 
-// Duration options matching web app
 const DURATIONS = [
   { label: 'Free Demo', value: 'free_demo' },
   { label: '1 Month', value: '1_month' },
@@ -22,13 +25,13 @@ const DURATIONS = [
 ];
 
 const INITIAL = {
-  tab: 'server', // 'server' | 'host'
+  tab: 'server',
   fx_login: '',
   fx_password: '',
   nic_name: '',
   fx_server: '',
   fx_host: '',
-  fx_port: '',
+  fx_port: '443',
   duration: 'free_demo',
   auto_renew: true,
 };
@@ -39,6 +42,9 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
 
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
+  const selectedDuration =
+    DURATIONS.find(d => d.value === form.duration)?.label || 'Select Duration';
+
   const handleAdd = async () => {
     if (!form.fx_login.trim()) {
       Alert.alert('Error', 'MT5 Id is required.');
@@ -48,8 +54,15 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
       Alert.alert('Error', 'Password is required.');
       return;
     }
+    if (form.tab === 'server' && !form.fx_server.trim()) {
+      Alert.alert('Error', 'Server Name is required.');
+      return;
+    }
+    if (form.tab === 'host' && !form.fx_host.trim()) {
+      Alert.alert('Error', 'Host is required.');
+      return;
+    }
 
-    // Build body exactly as API expects
     const body = {
       fx_login: form.fx_login.trim(),
       fx_password: form.fx_password,
@@ -69,12 +82,13 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
     if (result?.success) {
       setForm(INITIAL);
     } else {
-      Alert.alert('Error', result?.message || 'Something went wrong.');
+      Alert.alert('Failed', result?.message || 'Something went wrong.');
     }
   };
 
   const handleClose = () => {
     setForm(INITIAL);
+    setShowDuration(false);
     onClose();
   };
 
@@ -95,7 +109,7 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
             </TouchableOpacity>
           </View>
 
-          {/* Tab bar */}
+          {/* Tab Bar */}
           <View style={accountStyles.tabBar}>
             {['server', 'host'].map(t => (
               <TouchableOpacity
@@ -122,7 +136,6 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* MT5 Id → fx_login */}
             <Input
               label="MT5 Id"
               placeholder="Enter MT5 Id"
@@ -131,7 +144,6 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
               keyboardType="numeric"
             />
 
-            {/* Password → fx_password */}
             <Input
               label="Password"
               placeholder="Enter Password"
@@ -140,7 +152,6 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
               password
             />
 
-            {/* Server tab: fx_server | Host tab: fx_host + fx_port */}
             {form.tab === 'server' ? (
               <Input
                 label="Server Name"
@@ -158,6 +169,7 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
                     onChangeText={v => set('fx_host', v)}
                   />
                 </View>
+                <View style={{ width: spacing.sm }} />
                 <View style={{ flex: 1 }}>
                   <Input
                     label="Port"
@@ -170,7 +182,6 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
               </View>
             )}
 
-            {/* Nick Name → nic_name */}
             <Input
               label="Nick Name"
               placeholder="Enter Nick Name"
@@ -178,68 +189,54 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
               onChangeText={v => set('nic_name', v)}
             />
 
-            {/* Duration picker */}
-            <Text style={accountStyles.tabTxt}>Select Duration</Text>
+            {/* Duration Picker */}
+            <Text style={mStyles.label}>Select Duration</Text>
             <TouchableOpacity
-              style={[
-                accountStyles.tabBtn,
-                {
-                  backgroundColor: 'transparent',
-                  borderWidth: 1,
-                  borderColor: '#1f2d42',
-                  borderRadius: 10,
-                  padding: 12,
-                  marginTop: 6,
-                  marginBottom: 14,
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                },
-              ]}
+              style={mStyles.pickerBtn}
               onPress={() => setShowDuration(v => !v)}
             >
-              <Text style={{ color: '#fff', fontSize: 13 }}>
-                {DURATIONS.find(d => d.value === form.duration)?.label ||
-                  'Select Duration'}
+              <Text style={mStyles.pickerText}>{selectedDuration}</Text>
+              <Text style={mStyles.pickerArrow}>
+                {showDuration ? '▴' : '▾'}
               </Text>
-              <Text style={{ color: '#8a9ab5' }}>▾</Text>
             </TouchableOpacity>
 
-            {showDuration &&
-              DURATIONS.map(d => (
-                <TouchableOpacity
-                  key={d.value}
-                  onPress={() => {
-                    set('duration', d.value);
-                    setShowDuration(false);
-                  }}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 14,
-                    backgroundColor:
-                      form.duration === d.value
-                        ? 'rgba(74,222,128,0.1)'
-                        : 'transparent',
-                    borderRadius: 8,
-                    marginBottom: 2,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: form.duration === d.value ? '#4ade80' : '#8a9ab5',
-                      fontSize: 13,
+            {showDuration && (
+              <View style={mStyles.dropDown}>
+                {DURATIONS.map(d => (
+                  <TouchableOpacity
+                    key={d.value}
+                    style={[
+                      mStyles.dropItem,
+                      form.duration === d.value && mStyles.dropItemActive,
+                    ]}
+                    onPress={() => {
+                      set('duration', d.value);
+                      setShowDuration(false);
                     }}
                   >
-                    {d.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        mStyles.dropItemText,
+                        form.duration === d.value && { color: colors.primary },
+                      ]}
+                    >
+                      {d.label}
+                    </Text>
+                    {form.duration === d.value && (
+                      <Text style={{ color: colors.primary }}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
-            {/* Auto Renew → auto_renew */}
+            {/* Auto Renew */}
             <View style={accountStyles.switchRow}>
               <Switch
                 value={form.auto_renew}
                 onValueChange={v => set('auto_renew', v)}
-                trackColor={{ false: '#2d3f5a', true: '#4ade80' }}
+                trackColor={{ false: colors.borderLight, true: colors.primary }}
                 thumbColor="#fff"
               />
               <Text style={accountStyles.switchLabel}>Auto Renew</Text>
@@ -267,3 +264,45 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
     </Modal>
   );
 }
+
+const mStyles = StyleSheet.create({
+  label: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
+    fontWeight: typography.semibold,
+    marginBottom: spacing.xs,
+  },
+  pickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.bgInput,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: spacing.radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  pickerText: { fontSize: typography.md, color: colors.textPrimary },
+  pickerArrow: { fontSize: typography.sm, color: colors.textSecondary },
+  dropDown: {
+    backgroundColor: colors.bgInput,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: spacing.radius.md,
+    marginBottom: spacing.md,
+    overflow: 'hidden',
+  },
+  dropItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  dropItemActive: { backgroundColor: 'rgba(74,222,128,0.08)' },
+  dropItemText: { fontSize: typography.md, color: colors.textSecondary },
+});

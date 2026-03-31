@@ -27,14 +27,24 @@ export default function DaySlTpModal({ visible, onClose, item }) {
     if (visible && item) {
       const hasSl = item.day_sl && item.day_sl > 0;
       const hasTp = item.day_tp && item.day_tp > 0;
-      setSlEnabled(hasSl);
-      setTpEnabled(hasTp);
+      setSlEnabled(!!hasSl);
+      setTpEnabled(!!hasTp);
+      // Only pre-fill if values exist — don't pre-fill with 0
       setSl(hasSl ? String(item.day_sl) : '');
       setTp(hasTp ? String(item.day_tp) : '');
     }
   }, [visible, item]);
 
   const handleSubmit = async () => {
+    if (slEnabled && !sl.trim()) {
+      Alert.alert('Error', 'Please enter a Stop Loss value.');
+      return;
+    }
+    if (tpEnabled && !tp.trim()) {
+      Alert.alert('Error', 'Please enter a Target Profit value.');
+      return;
+    }
+
     const daySlVal = slEnabled && sl.trim() ? Number(sl) : 0;
     const dayTpVal = tpEnabled && tp.trim() ? Number(tp) : 0;
 
@@ -42,7 +52,7 @@ export default function DaySlTpModal({ visible, onClose, item }) {
     try {
       const res = await setSlTp(
         item.broker_id,
-        slEnabled || tpEnabled,
+        !!(slEnabled || tpEnabled), // ← boolean, not number
         daySlVal,
         dayTpVal,
       );
@@ -62,6 +72,8 @@ export default function DaySlTpModal({ visible, onClose, item }) {
   const handleClose = () => {
     setSl('');
     setTp('');
+    setSlEnabled(false);
+    setTpEnabled(false);
     onClose(false);
   };
 
@@ -86,12 +98,12 @@ export default function DaySlTpModal({ visible, onClose, item }) {
             </TouchableOpacity>
           </View>
 
-          {/* Stop Loss row */}
+          {/* Stop Loss */}
           <View style={s.fieldRow}>
             <Text style={s.fieldLabel}>Stop Loss (SL)</Text>
             <Switch
               value={slEnabled}
-              onValueChange={setSlEnabled}
+              onValueChange={val => setSlEnabled(!!val)} // ← force boolean
               trackColor={{ false: colors.borderLight, true: colors.primary }}
               thumbColor="#fff"
             />
@@ -103,15 +115,15 @@ export default function DaySlTpModal({ visible, onClose, item }) {
             value={sl}
             onChangeText={setSl}
             keyboardType="decimal-pad"
-            editable={slEnabled}
+            editable={slEnabled === true} // ← explicit boolean, never a number
           />
 
-          {/* Target Profit row */}
+          {/* Target Profit */}
           <View style={s.fieldRow}>
             <Text style={s.fieldLabel}>Target Profit (TP)</Text>
             <Switch
               value={tpEnabled}
-              onValueChange={setTpEnabled}
+              onValueChange={val => setTpEnabled(!!val)} // ← force boolean
               trackColor={{ false: colors.borderLight, true: colors.primary }}
               thumbColor="#fff"
             />
@@ -123,7 +135,7 @@ export default function DaySlTpModal({ visible, onClose, item }) {
             value={tp}
             onChangeText={setTp}
             keyboardType="decimal-pad"
-            editable={tpEnabled}
+            editable={tpEnabled === true} // ← explicit boolean, never a number
           />
 
           <View style={s.btnRow}>
@@ -193,6 +205,6 @@ const s = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.base,
   },
-  inputDisabled: { borderColor: colors.border, opacity: 0.5 },
+  inputDisabled: { borderColor: colors.border, opacity: 0.4 },
   btnRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
 });

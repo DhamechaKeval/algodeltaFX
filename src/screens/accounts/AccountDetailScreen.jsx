@@ -8,6 +8,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  TextInput,
+  StyleSheet,
 } from 'react-native';
 import AppHeader from '../../components/common/AppHeader';
 import Icon from '../../components/common/Icon';
@@ -21,110 +23,105 @@ import {
   getPositions,
   getPendingOrders,
   squareOffAll,
+  squareOffSingle,
   refreshAccount,
 } from '../../services/accountService';
+import { exportToCSV } from '../../utils/exportUtils';
 
 // ── Position Card ─────────────────────────────────────────────────
-function PositionCard({ item, brokerId, onEdit, onRefresh }) {
+function PositionCard({ item, onEdit, onSquareOff }) {
   const isBuy = item?.type === 0 || String(item?.type).toUpperCase() === 'BUY';
-  const pnl = item?.profit ?? item?.pnl ?? 0;
+  const pnl = Number(item?.profit ?? item?.pnl ?? 0);
+  const hasSl = item?.sl && item.sl !== 0;
+  const hasTp = item?.tp && item.tp !== 0;
 
   return (
-    <View style={detailStyles.posCard}>
+    <View style={s.card}>
       {/* Row 1: Symbol + Type + PnL */}
-      <View style={detailStyles.posRow1}>
+      <View style={s.cardRow1}>
         <View>
-          <Text style={detailStyles.posSymbol}>{item?.symbol || '—'}</Text>
-          <Text style={detailStyles.posTicket}>
-            #{item?.ticket || item?.id || '—'}
-          </Text>
+          <Text style={s.symbol}>{item?.symbol || '—'}</Text>
+          <Text style={s.ticket}>#{item?.ticket || item?.id || '—'}</Text>
         </View>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing.sm,
-          }}
-        >
-          <View style={isBuy ? detailStyles.typeBuy : detailStyles.typeSell}>
-            <Text
-              style={isBuy ? detailStyles.typeBuyTxt : detailStyles.typeSellTxt}
-            >
+        <View style={s.row1Right}>
+          <View style={isBuy ? s.buy : s.sell}>
+            <Text style={isBuy ? s.buyTxt : s.sellTxt}>
               {isBuy ? 'BUY' : 'SELL'}
             </Text>
           </View>
           <Text
             style={[
-              { fontSize: typography.sm, fontWeight: typography.bold },
+              s.pnl,
               pnl > 0 && { color: colors.primary },
               pnl < 0 && { color: colors.error },
-              pnl === 0 && { color: colors.textSecondary },
             ]}
           >
-            {pnl > 0 ? `+${pnl}` : pnl} ↑
+            {pnl > 0 ? `+${pnl.toFixed(4)}` : pnl.toFixed(4)}
+            <Text style={{ fontSize: 10 }}>
+              {pnl < 0 ? ' ↓' : pnl > 0 ? ' ↑' : ''}
+            </Text>
           </Text>
         </View>
       </View>
 
-      {/* Row 2: stats */}
-      <View style={detailStyles.posRow2}>
-        {[
-          { l: 'Volume', v: item?.volume ?? '—' },
-          { l: 'Price($)', v: item?.price_open ?? item?.price ?? '—' },
-          { l: 'SL', v: item?.sl ?? 0 },
-          { l: 'TP', v: item?.tp ?? 0 },
-        ].map((stat, i) => (
-          <View key={i} style={detailStyles.posStat}>
-            <Text style={detailStyles.posStatL}>{stat.l}</Text>
-            <Text style={detailStyles.posStatV}>{stat.v}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Row 3: Edit SL/TP button */}
-      <View
-        style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs }}
-      >
-        <TouchableOpacity
-          style={[
-            detailStyles.closeBtn,
-            {
-              flex: 1,
-              borderColor: 'rgba(139,92,246,0.4)',
-              backgroundColor: 'rgba(139,92,246,0.08)',
-            },
-          ]}
-          onPress={() => onEdit(item)}
-        >
-          <Icon name="settings" size={13} color="#8B5CF6" strokeWidth={1.8} />
-          <Text
-            style={{
-              fontSize: typography.xs + 1,
-              fontWeight: typography.bold,
-              color: '#8B5CF6',
-            }}
-          >
-            Edit SL / TP
+      {/* Row 2: Volume | Price | SL | TP */}
+      <View style={s.statsRow}>
+        <View style={s.statBox}>
+          <Text style={s.statLabel}>Volume</Text>
+          <Text style={s.statVal}>{item?.volume ?? '—'}</Text>
+        </View>
+        <View style={s.statBox}>
+          <Text style={s.statLabel}>Price($)</Text>
+          <Text style={s.statVal}>
+            {item?.price_open ?? item?.price ?? '—'}
           </Text>
-        </TouchableOpacity>
+        </View>
+        <View style={s.statBox}>
+          <Text style={s.statLabel}>SL</Text>
+          <TouchableOpacity onPress={() => onEdit(item)}>
+            {hasSl ? (
+              <Text style={s.statVal}>{item.sl}</Text>
+            ) : (
+              <Text style={s.addLink}>Add</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+        <View style={s.statBox}>
+          <Text style={s.statLabel}>TP</Text>
+          <TouchableOpacity onPress={() => onEdit(item)}>
+            {hasTp ? (
+              <Text style={s.statVal}>{item.tp}</Text>
+            ) : (
+              <Text style={s.addLink}>Add</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {item?.time && (
-        <Text
-          style={{
-            fontSize: typography.xs,
-            color: colors.textMuted,
-            marginTop: spacing.xs,
-          }}
-        >
-          {item.time}
-        </Text>
-      )}
+      {/* Row 3: Action buttons */}
+      <View style={s.cardBottom}>
+        <Text style={s.timeText}>{item?.time || ''}</Text>
+        <View style={s.actionRow}>
+          {/* Edit SL/TP */}
+          <TouchableOpacity style={s.editBtn} onPress={() => onEdit(item)}>
+            <Icon name="settings" size={13} color="#EF9F27" strokeWidth={1.8} />
+            <Text style={s.editBtnTxt}>Edit SL/TP</Text>
+          </TouchableOpacity>
+          {/* Square Off — red */}
+          <TouchableOpacity
+            style={s.squareBtn}
+            onPress={() => onSquareOff(item)}
+          >
+            <Icon name="x" size={13} color="#fff" strokeWidth={2.5} />
+            <Text style={s.squareBtnTxt}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
 
-// ── Pending Order Card ────────────────────────────────────────────
+// ── Pending Card ──────────────────────────────────────────────────
 function PendingCard({ item }) {
   const typeMap = {
     0: 'BUY',
@@ -138,35 +135,32 @@ function PendingCard({ item }) {
   const isBuy = String(typeLabel).includes('BUY');
 
   return (
-    <View style={detailStyles.posCard}>
-      <View style={detailStyles.posRow1}>
+    <View style={s.card}>
+      <View style={s.cardRow1}>
         <View>
-          <Text style={detailStyles.posSymbol}>{item?.symbol || '—'}</Text>
-          <Text style={detailStyles.posTicket}>
-            #{item?.ticket || item?.id || '—'}
-          </Text>
+          <Text style={s.symbol}>{item?.symbol || '—'}</Text>
+          <Text style={s.ticket}>#{item?.ticket || item?.id || '—'}</Text>
         </View>
-        <View style={isBuy ? detailStyles.typeBuy : detailStyles.typeSell}>
-          <Text
-            style={isBuy ? detailStyles.typeBuyTxt : detailStyles.typeSellTxt}
-          >
-            {typeLabel}
-          </Text>
+        <View style={isBuy ? s.buy : s.sell}>
+          <Text style={isBuy ? s.buyTxt : s.sellTxt}>{typeLabel}</Text>
         </View>
       </View>
-      <View style={detailStyles.posRow2}>
+      <View style={s.statsRow}>
         {[
           { l: 'Volume', v: item?.volume ?? '—' },
           { l: 'Price($)', v: item?.price_open ?? item?.price ?? '—' },
-          { l: 'SL', v: item?.sl ?? 0 },
-          { l: 'TP', v: item?.tp ?? 0 },
+          { l: 'SL', v: item?.sl ?? '—' },
+          { l: 'TP', v: item?.tp ?? '—' },
         ].map((stat, i) => (
-          <View key={i} style={detailStyles.posStat}>
-            <Text style={detailStyles.posStatL}>{stat.l}</Text>
-            <Text style={detailStyles.posStatV}>{stat.v}</Text>
+          <View key={i} style={s.statBox}>
+            <Text style={s.statLabel}>{stat.l}</Text>
+            <Text style={s.statVal}>{stat.v}</Text>
           </View>
         ))}
       </View>
+      {item?.time && (
+        <Text style={[s.timeText, { marginTop: spacing.xs }]}>{item.time}</Text>
+      )}
     </View>
   );
 }
@@ -182,8 +176,9 @@ export default function AccountDetailScreen({ route, navigation }) {
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
   const [showOrder, setShowOrder] = useState(false);
-  const [editPos, setEditPos] = useState(null); // position being edited
+  const [editPos, setEditPos] = useState(null);
 
   const freeMargin = account_info?.margin_free ?? 0;
   const pnl = account_info?.floating_profit ?? 0;
@@ -225,10 +220,42 @@ export default function AccountDetailScreen({ route, navigation }) {
     fetchData();
   }, [fetchData]);
 
+  const handleSquareOff = pos => {
+    Alert.alert(
+      'Close Position',
+      `Close ${pos?.symbol} ${pos?.type === 0 ? 'BUY' : 'SELL'} (Vol: ${
+        pos?.volume
+      })?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Close Position',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await squareOffSingle(
+                broker_id,
+                pos?.ticket || pos?.id,
+              );
+              if (res?.status === true) {
+                Alert.alert('Success', 'Position closed.');
+                fetchData(true);
+              } else {
+                Alert.alert('Error', res?.message || 'Failed.');
+              }
+            } catch (e) {
+              Alert.alert('Error', e?.message || 'Network error.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const handleSquareOffAll = () => {
     Alert.alert(
       'Confirm Square Off All',
-      'Are you sure you want to square off all position of this account?',
+      'Are you sure you want to square off all positions of this account?',
       [
         { text: 'No', style: 'cancel' },
         {
@@ -252,16 +279,14 @@ export default function AccountDetailScreen({ route, navigation }) {
     );
   };
 
-  const handleRefreshBanner = async () => {
-    try {
-      await refreshAccount(broker_id);
-    } catch {}
-    fetchData(true);
-  };
-
-  const data = tab === 'positions' ? positions : pending;
-  const empty =
-    tab === 'positions' ? 'No open positions.' : 'No pending orders.';
+  const rawData = tab === 'positions' ? positions : pending;
+  const data = search.trim()
+    ? rawData.filter(i =>
+        String(i?.symbol || '')
+          .toLowerCase()
+          .includes(search.toLowerCase()),
+      )
+    : rawData;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -300,7 +325,8 @@ export default function AccountDetailScreen({ route, navigation }) {
                 pnl >= 0 ? detailStyles.pnlPositive : detailStyles.pnlNegative,
               ]}
             >
-              {pnl}
+              {Number(pnl).toFixed(4)}
+              {pnl < 0 ? ' ↓' : ''}
             </Text>
             <Text style={detailStyles.statLabel}>PnL</Text>
           </View>
@@ -329,7 +355,12 @@ export default function AccountDetailScreen({ route, navigation }) {
             </TouchableOpacity>
             <TouchableOpacity
               style={detailStyles.actionIconBtn}
-              onPress={handleRefreshBanner}
+              onPress={async () => {
+                try {
+                  await refreshAccount(broker_id);
+                } catch {}
+                fetchData(true);
+              }}
             >
               <Icon
                 name="refresh"
@@ -364,7 +395,16 @@ export default function AccountDetailScreen({ route, navigation }) {
 
       {/* Toolbar */}
       <View style={detailStyles.toolbar}>
-        <TouchableOpacity style={detailStyles.exportBtn}>
+        <TouchableOpacity
+          style={detailStyles.exportBtn}
+          onPress={() =>
+            exportToCSV(
+              data,
+              tab,
+              account.broker_combine_name || account.nic_name,
+            )
+          }
+        >
           <Icon
             name="download"
             size={13}
@@ -389,53 +429,70 @@ export default function AccountDetailScreen({ route, navigation }) {
           <Icon name="refresh" size={13} color="#8B5CF6" strokeWidth={2} />
           <Text style={detailStyles.refreshTxt}>Refresh</Text>
         </TouchableOpacity>
+        {/* Search */}
+        <View style={s.searchBox}>
+          <Icon
+            name="search"
+            size={12}
+            color={colors.textMuted}
+            strokeWidth={1.8}
+          />
+          <TextInput
+            style={s.searchInput}
+            placeholder="Search..."
+            placeholderTextColor={colors.textPlaceholder}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
       </View>
 
-      {/* Content */}
+      {/* List */}
       {loading ? (
         <View
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
         >
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
-      ) : data.length === 0 ? (
-        <View
-          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Icon
-            name="orders"
-            size={40}
-            color={colors.textMuted}
-            strokeWidth={1}
-          />
-          <Text
-            style={{
-              color: colors.textSecondary,
-              marginTop: spacing.md,
-              fontSize: typography.md,
-            }}
-          >
-            {empty}
-          </Text>
-        </View>
       ) : (
         <FlatList
           data={data}
           keyExtractor={(item, i) => String(item?.ticket || item?.id || i)}
+          ListEmptyComponent={
+            <View
+              style={{ alignItems: 'center', paddingVertical: spacing.xxl }}
+            >
+              <Icon
+                name="orders"
+                size={36}
+                color={colors.textMuted}
+                strokeWidth={1}
+              />
+              <Text
+                style={{ color: colors.textSecondary, marginTop: spacing.md }}
+              >
+                {tab === 'positions'
+                  ? 'No open positions.'
+                  : 'No pending orders.'}
+              </Text>
+            </View>
+          }
           renderItem={({ item }) =>
             tab === 'positions' ? (
               <PositionCard
                 item={item}
-                brokerId={broker_id}
-                onEdit={pos => setEditPos(pos)}
-                onRefresh={() => fetchData(true)}
+                onEdit={setEditPos}
+                onSquareOff={handleSquareOff}
               />
             ) : (
               <PendingCard item={item} />
             )
           }
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: spacing.xxl }}
+          contentContainerStyle={{
+            padding: spacing.base,
+            paddingBottom: spacing.xxl,
+          }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -447,7 +504,6 @@ export default function AccountDetailScreen({ route, navigation }) {
         />
       )}
 
-      {/* Place Order Modal */}
       <PlaceOrderModal
         visible={showOrder}
         brokerId={broker_id}
@@ -456,17 +512,153 @@ export default function AccountDetailScreen({ route, navigation }) {
           fetchData(true);
         }}
       />
-
-      {/* Edit Order Modal */}
       <EditOrderModal
         visible={!!editPos}
         position={editPos}
         brokerId={broker_id}
-        onClose={refreshed => {
+        onClose={r => {
           setEditPos(null);
-          if (refreshed) fetchData(true);
+          if (r) fetchData(true);
         }}
       />
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  // Position card
+  card: {
+    backgroundColor: colors.bgCard,
+    borderRadius: spacing.radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+  },
+  cardRow1: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  symbol: {
+    fontSize: typography.base,
+    fontWeight: typography.bold,
+    color: colors.textPrimary,
+  },
+  ticket: { fontSize: typography.xs, color: colors.textMuted, marginTop: 2 },
+  row1Right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  buy: {
+    backgroundColor: 'rgba(74,222,128,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(74,222,128,0.3)',
+    borderRadius: spacing.radius.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  sell: {
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
+    borderRadius: spacing.radius.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  buyTxt: {
+    fontSize: typography.xs + 1,
+    fontWeight: typography.bold,
+    color: colors.primary,
+  },
+  sellTxt: {
+    fontSize: typography.xs + 1,
+    fontWeight: typography.bold,
+    color: colors.error,
+  },
+  pnl: {
+    fontSize: typography.sm,
+    fontWeight: typography.bold,
+    color: colors.textSecondary,
+  },
+  statsRow: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.sm },
+  statBox: {
+    flex: 1,
+    backgroundColor: colors.bgInput,
+    borderRadius: spacing.radius.sm,
+    padding: spacing.xs + 2,
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: typography.xs,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  statVal: {
+    fontSize: typography.xs + 1,
+    fontWeight: typography.semibold,
+    color: colors.textPrimary,
+  },
+  addLink: {
+    fontSize: typography.xs + 1,
+    color: colors.primary,
+    fontWeight: typography.semibold,
+  },
+  cardBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+  },
+  timeText: { fontSize: typography.xs, color: colors.textMuted },
+  actionRow: { flexDirection: 'row', gap: spacing.sm },
+  // Edit button — orange
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239,159,39,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,159,39,0.3)',
+    borderRadius: spacing.radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  editBtnTxt: {
+    fontSize: typography.xs + 1,
+    fontWeight: typography.semibold,
+    color: '#EF9F27',
+  },
+  // Square off — red filled
+  squareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.error,
+    borderRadius: spacing.radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  squareBtnTxt: {
+    fontSize: typography.xs + 1,
+    fontWeight: typography.bold,
+    color: '#fff',
+  },
+  // Search
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    backgroundColor: colors.bgInput,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: spacing.radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    gap: 4,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: typography.xs + 1,
+    color: colors.textPrimary,
+    padding: 0,
+  },
+});

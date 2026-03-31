@@ -35,6 +35,7 @@ export default function AccountCard({
   const [showExtend, setShowExtend] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [showDaySlTp, setShowDaySlTp] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   const {
     broker_id,
@@ -187,7 +188,7 @@ export default function AccountCard({
 
         {/* Stats row 1 */}
         <View style={accountStyles.statsRow}>
-          <StatBox label="Equity" value={Number(equity).toFixed(4)} />
+          <StatBox label="Equity" value={Number(equity)} />
           <StatBox label="POS" value={positions_count} />
           <StatBox label="Pending" value={orders_count} />
           <StatBox
@@ -204,7 +205,7 @@ export default function AccountCard({
           <StatBox label="In Group" value={group_involve_count} />
           <StatBox
             label="Free Margin"
-            value={Number(margin_free).toFixed(4)}
+            value={Number(margin_free)}
             flex={2}
           />
         </View>
@@ -214,12 +215,17 @@ export default function AccountCard({
         {/* ── Toggle row 1: Day SL/TP + SL/TP values ── */}
         <View style={s.slTpRow}>
           <View style={accountStyles.toggleItem}>
-            <Icon
-              name="info"
-              size={13}
-              color={colors.textMuted}
-              strokeWidth={1.5}
-            />
+            <TouchableOpacity
+              onPress={() => setShowTooltip(v => !v)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Icon
+                name="info"
+                size={14}
+                color={colors.primary}
+                strokeWidth={1.8}
+              />
+            </TouchableOpacity>
             <Text style={[accountStyles.toggleLabel, { marginLeft: 3 }]}>
               Day SL/TP
             </Text>
@@ -260,6 +266,21 @@ export default function AccountCard({
             </View>
           )}
         </View>
+
+        {/* Tooltip */}
+        {showTooltip && (
+          <TouchableOpacity
+            style={s.tooltipWrap}
+            activeOpacity={1}
+            onPress={() => setShowTooltip(false)}
+          >
+            <Text style={s.tooltipTxt}>
+              When Day SL/TP is ON, if the stop-loss or take-profit is hit, no
+              further trades will be allowed on this account for the rest of the
+              day. To continue trading, turn Day SL/TP OFF.
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* ── Toggle row 2: Trading + Auto Renew + icons ── */}
         <View style={accountStyles.bottomRow}>
@@ -420,6 +441,20 @@ const s = StyleSheet.create({
   iconPurple: {
     backgroundColor: 'rgba(139,92,246,0.12)',
     borderColor: 'rgba(139,92,246,0.3)',
+  },
+  tooltipWrap: {
+    backgroundColor: '#1a2235',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+  },
+  tooltipTxt: {
+    fontSize: 12,
+    color: '#c8d6e8',
+    lineHeight: 18,
+    textAlign: 'center',
   },
 });
 

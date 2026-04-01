@@ -22,32 +22,36 @@ const postJson = async (endpoint, body = {}) => {
   }
 };
 
-const PAGE_BODY = (offset = 0, limit = 10) => ({
-  offset,
-  limit,
-  sort_by: 'create_time',
-  order: 'DESC',
-  filters: {},
-});
-
-// ── Group order history ───────────────────────────────────────────
-export const getGroupOrderHistory = (offset, limit) =>
-  postJson(
-    '/users/orderhistory/getgrouporderhistory',
-    PAGE_BODY(offset, limit),
-  );
+// ── Group order history (all records) ─────────────────────────────
+export const getGroupOrderHistory = (filters = {}) =>
+  postJson('/users/orderhistory/getgrouporderhistory', {
+    offset: 0,
+    limit: 1000,
+    sort_by: 'create_time',
+    order: 'DESC',
+    filters,
+  });
 
 // ── Orders inside a group ─────────────────────────────────────────
 export const getUserOrders = group_order_id =>
   postJson('/users/orderhistory/getuserorders', { group_order_id });
 
-// ── Individual order history ──────────────────────────────────────
-export const getIndividualOrderHistory = (offset, limit) =>
-  postJson(
-    '/users/orderhistory/getindividualorderhistory',
-    PAGE_BODY(offset, limit),
-  );
+// ── Individual order history (all records) ────────────────────────
+export const getIndividualOrderHistory = (filters = {}) =>
+  postJson('/users/orderhistory/getindividualorderhistory', {
+    offset: 0,
+    limit: 1000,
+    sort_by: 'create_time',
+    order: 'DESC',
+    filters,
+  });
 
 // ── Order details ─────────────────────────────────────────────────
-export const getOrdersHistory = (offset, limit) =>
-  postJson('/users/orderhistory/getordershistory', PAGE_BODY(offset, limit));
+export const getOrdersHistory = (filters = {}) =>
+  postJson('/users/orderhistory/getordershistory', {
+    offset: 0,
+    limit: 1000,
+    sort_by: 'create_time',
+    order: 'DESC',
+    filters,
+  });

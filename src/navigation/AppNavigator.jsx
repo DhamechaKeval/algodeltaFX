@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import AuthNavigator from './AuthNavigator';
 import BottomTabNavigator from './BottomTabNavigator';
 import AccountDetailScreen from '../screens/accounts/AccountDetailScreen';
+import GroupOrderDetailScreen from '../screens/orders/GroupOrderDetailScreen';
 import { colors } from '../theme/colors';
 import { setNavigatorRef } from '../services/api';
 
@@ -54,6 +55,10 @@ export default function AppNavigator() {
         <Stack.Screen name="Auth" component={AuthNavigator} />
         <Stack.Screen name="Main" component={BottomTabNavigator} />
         <Stack.Screen name="AccountDetail" component={AccountDetailScreen} />
+        <Stack.Screen
+          name="GroupOrderDetail"
+          component={GroupOrderDetailScreen}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

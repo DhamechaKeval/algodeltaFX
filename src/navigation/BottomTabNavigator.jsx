@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from '../components/common/Icon';
 import { colors } from '../theme/colors';
@@ -23,8 +24,17 @@ const TABS = [
 ];
 
 function CustomTabBar({ state, navigation }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={s.bar}>
+    <View
+      style={[
+        s.bar,
+        {
+          paddingBottom: Math.max(insets.bottom, spacing.sm),
+          height: 54 + Math.max(insets.bottom, spacing.sm),
+        },
+      ]}
+    >
       {state.routes.map((route, index) => {
         const tab = TABS[index];
         const focused = state.index === index;
@@ -74,9 +84,7 @@ const s = StyleSheet.create({
     backgroundColor: '#0d1526',
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingBottom: spacing.sm,
     paddingTop: spacing.xs,
-    height: 62,
   },
   tab: {
     flex: 1,

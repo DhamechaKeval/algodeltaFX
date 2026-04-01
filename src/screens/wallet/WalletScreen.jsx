@@ -157,8 +157,8 @@ export default function WalletScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          padding: spacing.base,
-          paddingBottom: spacing.xxl,
+          paddingInline: spacing.base,
+          paddingBlock: spacing.sm + 2,
         }}
         refreshControl={
           <RefreshControl
@@ -169,8 +169,6 @@ export default function WalletScreen() {
           />
         }
       >
-        <Text style={s.pageTitle}>Wallet</Text>
-
         {/* ── Add Amount ── */}
         <View style={s.addSection}>
           <Text style={s.sectionTitle}>Add Amount</Text>
@@ -416,13 +414,6 @@ export default function WalletScreen() {
 }
 
 const s = StyleSheet.create({
-  pageTitle: {
-    fontSize: typography.xl,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: spacing.base,
-  },
-
   addSection: { marginBottom: spacing.base },
   sectionTitle: {
     fontSize: typography.base,

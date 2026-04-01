@@ -19,6 +19,7 @@ import { spacing } from '../../theme/spacing';
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [agreed, setAgreed] = useState(false);
+  const [focusedInput, setFocusedInput] = useState(null);
 
   const handleSignUp = () => {
     if (!email.trim()) {
@@ -59,7 +60,10 @@ export default function RegisterScreen({ navigation }) {
 
           <Text style={styles.label}>Email address</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              focusedInput === 'email' && styles.inputFocused,
+            ]}
             placeholder="Enter email"
             placeholderTextColor={colors.textPlaceholder}
             value={email}
@@ -67,6 +71,8 @@ export default function RegisterScreen({ navigation }) {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            onBlur={() => setFocusedInput(null)}
+            onFocus={() => setFocusedInput('email')}
           />
 
           <TouchableOpacity
@@ -145,6 +151,14 @@ const styles = StyleSheet.create({
     fontSize: typography.md,
     color: colors.textPrimary,
     marginBottom: spacing.base,
+  },
+  inputFocused: {
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3, // Android
   },
   termsRow: {
     flexDirection: 'row',

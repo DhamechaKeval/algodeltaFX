@@ -104,11 +104,6 @@ export default function OrderHistoryScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
       <AppHeader />
 
-      {/* Title */}
-      <View style={s.titleRow}>
-        <Text style={s.pageTitle}>Order History</Text>
-      </View>
-
       {/* Tabs */}
       <View style={s.tabBar}>
         {TABS.map((t, i) => (
@@ -196,20 +191,10 @@ export default function OrderHistoryScreen({ navigation }) {
 }
 
 const s = StyleSheet.create({
-  titleRow: {
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  pageTitle: {
-    fontSize: typography.xl,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
   tabBar: {
     flexDirection: 'row',
     marginHorizontal: spacing.base,
-    marginBottom: spacing.sm,
+    marginBlock: spacing.sm + 2,
     backgroundColor: colors.bgCard,
     borderRadius: spacing.radius.md,
     padding: 3,
@@ -239,7 +224,7 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: spacing.radius.md,
     paddingHorizontal: spacing.md,
-    height: 42,
+    height: 38,
   },
   searchFocused: { borderColor: colors.primary },
   searchInput: {

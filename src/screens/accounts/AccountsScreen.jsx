@@ -92,22 +92,8 @@ export default function AccountsScreen({ navigation }) {
   return (
     <View style={common.screen}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-
       <AppHeader />
-
       {/* Page title row */}
-      <View style={s.titleRow}>
-        <Text style={s.pageTitle}>Account Management</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setShowModal(true)}>
-          <Icon
-            name="users"
-            size={14}
-            color={colors.primaryText}
-            strokeWidth={2}
-          />
-          <Text style={s.addBtnTxt}>Add Account</Text>
-        </TouchableOpacity>
-      </View>
 
       {/* Search + Sort — same height */}
       <View style={s.toolRow}>
@@ -165,6 +151,15 @@ export default function AccountsScreen({ navigation }) {
             color={showSortMenu ? colors.primary : colors.textSecondary}
             strokeWidth={1.8}
           />
+        </TouchableOpacity>
+        <TouchableOpacity style={s.addBtn} onPress={() => setShowModal(true)}>
+          <Icon
+            name="users"
+            size={14}
+            color={colors.primaryText}
+            strokeWidth={2}
+          />
+          <Text style={s.addBtnTxt}>Add Account</Text>
         </TouchableOpacity>
       </View>
 
@@ -291,27 +286,16 @@ export default function AccountsScreen({ navigation }) {
 const TOOL_HEIGHT = 42;
 
 const s = StyleSheet.create({
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  pageTitle: {
-    fontSize: typography.xl,
-    fontWeight: typography.extrabold,
-    color: colors.textPrimary,
-  },
   addBtn: {
+    height: TOOL_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
     backgroundColor: colors.primary,
-    borderRadius: spacing.radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: spacing.radius.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 1,
   },
   addBtnTxt: {
     fontSize: typography.xs + 1,
@@ -325,7 +309,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.base,
-    marginBottom: spacing.sm,
+    marginBlock: spacing.sm,
   },
 
   // Search box

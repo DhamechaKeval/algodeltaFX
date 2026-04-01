@@ -1,4 +1,9 @@
 {
   "name": "algodeltaFX",
-  "displayName": "algodeltaFX"
+  "displayName": "algodeltaFX",
+  "extra": {
+    "eas": {
+      "projectId": "0039d6c5-e271-4846-8435-f05628d76b60"
+    }
+  }
 }

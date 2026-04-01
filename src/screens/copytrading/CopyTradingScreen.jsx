@@ -3,18 +3,14 @@ import { View, Text, StyleSheet, StatusBar, Image } from 'react-native';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import AppHeader from '../../components/common/AppHeader';
 
 export default function CopyTradingScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-      <View style={styles.header}>
-        <Image
-          source={require('../../assets/algodeltafx_com_horizontal_logo.jpg')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </View>
+      <AppHeader />
+
       <View style={styles.titleRow}>
         <Text style={styles.pageTitle}>Copy Trading</Text>
       </View>
@@ -29,13 +25,7 @@ export default function CopyTradingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
+
   logo: { width: 130, height: 36 },
   titleRow: {
     paddingHorizontal: spacing.base,

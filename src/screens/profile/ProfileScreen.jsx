@@ -232,12 +232,10 @@ export default function ProfileScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           flexGrow: 1,
-          padding: spacing.base,
-          paddingBottom: spacing.xxl,
+          paddingInline: spacing.base,
+          paddingBlock: spacing.sm + 2,
         }}
       >
-        <Text style={s.pageTitle}>Profile</Text>
-
         <View style={s.card}>
           {/* ── Avatar ── */}
           <View style={s.avatarRow}>
@@ -676,12 +674,6 @@ function Field({ label, children }) {
 }
 
 const s = StyleSheet.create({
-  pageTitle: {
-    fontSize: typography.xl,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: spacing.base,
-  },
   card: { marginBottom: spacing.base },
   divider: {
     height: 1,

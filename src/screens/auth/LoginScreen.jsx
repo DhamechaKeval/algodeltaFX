@@ -26,6 +26,7 @@ export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { handleLogin } = useAuth();
+  const [focusedInput, setFocusedInput] = useState(null);
 
   const onPressLogin = async () => {
     if (!email.trim()) {
@@ -76,7 +77,10 @@ export default function LoginScreen({ navigation }) {
           {/* Email */}
           <Text style={styles.label}>Email</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              focusedInput === 'email' && styles.inputFocused,
+            ]}
             placeholder="Enter email"
             placeholderTextColor={colors.textPlaceholder}
             value={email}
@@ -84,19 +88,26 @@ export default function LoginScreen({ navigation }) {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            onFocus={() => setFocusedInput('email')}
+            onBlur={() => setFocusedInput(null)}
           />
 
           {/* Password */}
           <Text style={styles.label}>Password</Text>
           <View style={styles.inputRow}>
             <TextInput
-              style={[styles.input, styles.inputFlex]}
+              style={[
+                styles.input,
+                focusedInput === 'password' && styles.inputFocused,
+              ]}
               placeholder="Enter Password"
               placeholderTextColor={colors.textPlaceholder}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               autoCapitalize="none"
+              onFocus={() => setFocusedInput('password')}
+              onBlur={() => setFocusedInput(null)}
             />
 
             <TouchableOpacity
@@ -206,10 +217,17 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.base,
   },
+  inputFocused: {
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3, // Android
+  },
   inputRow: { position: 'relative', marginBottom: spacing.base },
   inputFlex: { marginBottom: 0, paddingRight: 44 },
   eyeBtn: { position: 'absolute', right: spacing.md, top: spacing.md },
-  eyeIcon: { fontSize: spacing.icon.sm },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

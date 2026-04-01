@@ -20,11 +20,7 @@ import Button from '../../components/common/Button';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
-import {
-  COUNTRIES,
-  getDialCode,
-  getCountryByName,
-} from '../../utils/countries';
+import { getCountries } from '../../services/profileService';
 import {
   getUserProfile,
   updateUserProfile,
@@ -44,7 +40,11 @@ export default function ProfileScreen({ navigation }) {
   const [showAge, setShowAge] = useState(false);
   const [showCountry, setShowCountry] = useState(false);
   const [countryQ, setCountryQ] = useState('');
+  const [mobileLength, setMobileLength] = useState(null);
+  const [countriesList, setCountriesList] = useState([]);
+  const [countrySearchFocused, setCountrySearchFocused] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
+  const [selectedCountryObj, setSelectedCountryObj] = useState(null);
   const [photoUrl, setPhotoUrl] = useState(null);
 
   const [fullName, setFullName] = useState('');
@@ -58,28 +58,50 @@ export default function ProfileScreen({ navigation }) {
   const [imageUri, setImageUri] = useState(null);
   const [imageFile, setImageFile] = useState(null);
 
-  const fillForm = d => {
-    setFullName(d?.full_name || '');
-    setAgeRange(d?.age_range || '');
-    setCountry(d?.country || '');
-    setDialCode(getDialCode(d?.country));
-    setState_(d?.state || '');
-    setCity(d?.city || '');
-    setPincode(String(d?.pincode || ''));
-    setMobileNo(String(d?.mobile_no || ''));
-    setImageUri(null); // loaded separately from photo URL
-  };
+  // Look up dial code from loaded countries list by country name
+  const findDialCode = useCallback((countryName, list) => {
+    if (!countryName || !list?.length) return '+91';
+    const found = list.find(
+      c => c?.name?.toUpperCase() === countryName?.toUpperCase(),
+    );
+    return found?.code || '+91';
+  }, []);
+
+  const fillForm = useCallback(
+    (d, list) => {
+      const cList = list || [];
+      setFullName(d?.full_name || '');
+      setAgeRange(d?.age_range || '');
+      setCountry(d?.country || '');
+      setDialCode(findDialCode(d?.country, cList));
+      setState_(d?.state || '');
+      setCity(d?.city || '');
+      setPincode(String(d?.pincode || ''));
+      setMobileNo(String(d?.mobile_no || ''));
+      setImageUri(null);
+    },
+    [findDialCode],
+  );
 
   const fetchProfile = useCallback(async () => {
     try {
       setLoading(true);
-      const [res, url] = await Promise.all([
+      // Load countries + profile together so dial code lookup works
+      const [res, url, cRes] = await Promise.all([
         getUserProfile(),
         getProfilePhotoUrl(),
+        getCountries(),
       ]);
+      const cList = Array.isArray(cRes?.data)
+        ? cRes.data
+        : Array.isArray(cRes)
+        ? cRes
+        : [];
+      setCountriesList(cList);
+
       if (res?.status === true && res?.data) {
         setProfile(res.data);
-        fillForm(res.data);
+        fillForm(res.data, cList); // pass list so dial code is resolved immediately
       }
       if (url) setPhotoUrl(url);
     } catch (e) {
@@ -87,7 +109,7 @@ export default function ProfileScreen({ navigation }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fillForm]);
 
   useEffect(() => {
     fetchProfile();
@@ -95,9 +117,11 @@ export default function ProfileScreen({ navigation }) {
 
   // ── Country selected → clear location fields + update dial code ──
   const handleSelectCountry = c => {
-    setCountry(c.name);
-    setDialCode(c.dial);
-    // Auto-clear location fields
+    setSelectedCountryObj(c); // save full object
+    setCountry(getCName(c));
+    setDialCode(getCDial(c));
+    setMobileLength(Number(c?.mobile_no_length) || null);
+    // Auto-clear location fields on country change
     setState_('');
     setCity('');
     setPincode('');
@@ -106,11 +130,16 @@ export default function ProfileScreen({ navigation }) {
     setCountryQ('');
   };
 
+  // Get display name from API country object
+  // API: { name, code, mobile_no_length }
+  const getCName = c => c?.name || '';
+  const getCDial = c => c?.code || '+91';
+
   const filteredCountries = countryQ.trim()
-    ? COUNTRIES.filter(c =>
-        c.name.toLowerCase().includes(countryQ.toLowerCase()),
+    ? countriesList.filter(c =>
+        getCName(c).toLowerCase().includes(countryQ.toLowerCase()),
       )
-    : COUNTRIES;
+    : countriesList;
 
   // ── Pick image ────────────────────────────────────────────────
   const handlePickImage = () => {
@@ -168,7 +197,7 @@ export default function ProfileScreen({ navigation }) {
   };
 
   const handleCancel = () => {
-    if (profile) fillForm(profile);
+    if (profile) fillForm(profile, countriesList);
     setImageFile(null);
     setEditing(false);
     setShowAge(false);
@@ -439,11 +468,34 @@ export default function ProfileScreen({ navigation }) {
               <TextInput
                 style={s.mobileInput}
                 value={mobileNo}
-                onChangeText={setMobileNo}
+                onChangeText={text => {
+                  const found = countriesList.find(
+                    c => c?.name?.toUpperCase() === country?.toUpperCase(),
+                  );
+                  const maxLen = found?.mobile_no_length
+                    ? Number(found.mobile_no_length)
+                    : 15;
+                  if (text.length <= maxLen) setMobileNo(text);
+                }}
                 editable={editing}
-                placeholder="Enter Mobile Number"
+                placeholder={(() => {
+                  const found = countriesList.find(
+                    c => c?.name?.toUpperCase() === country?.toUpperCase(),
+                  );
+                  return found?.mobile_no_length
+                    ? `${found.mobile_no_length} digits`
+                    : 'Enter Mobile Number';
+                })()}
                 placeholderTextColor={colors.textPlaceholder}
                 keyboardType="phone-pad"
+                maxLength={(() => {
+                  const found = countriesList.find(
+                    c => c?.name?.toUpperCase() === country?.toUpperCase(),
+                  );
+                  return found?.mobile_no_length
+                    ? Number(found.mobile_no_length)
+                    : 15;
+                })()}
                 onFocus={() => setFocusedField('mobile')}
                 onBlur={() => setFocusedField(null)}
               />
@@ -534,7 +586,12 @@ export default function ProfileScreen({ navigation }) {
             </View>
 
             {/* Search */}
-            <View style={cm.searchBox}>
+            <View
+              style={[
+                cm.searchBox,
+                countrySearchFocused && { borderColor: colors.primary },
+              ]}
+            >
               <Icon
                 name="search"
                 size={14}
@@ -549,6 +606,8 @@ export default function ProfileScreen({ navigation }) {
                 onChangeText={setCountryQ}
                 autoCapitalize="none"
                 autoCorrect={false}
+                onFocus={() => setCountrySearchFocused(true)}
+                onBlur={() => setCountrySearchFocused(false)}
               />
               {countryQ.length > 0 && (
                 <TouchableOpacity onPress={() => setCountryQ('')}>
@@ -564,12 +623,13 @@ export default function ProfileScreen({ navigation }) {
 
             <FlatList
               data={filteredCountries}
-              keyExtractor={item => item.code}
+              keyExtractor={item => item?.name || String(Math.random())}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => {
-                const selected =
-                  country.toUpperCase() === item.name.toUpperCase();
+                const name = getCName(item);
+                const dial = getCDial(item);
+                const selected = country.toUpperCase() === name.toUpperCase();
                 return (
                   <TouchableOpacity
                     style={[cm.countryItem, selected && cm.countryActive]}
@@ -584,9 +644,9 @@ export default function ProfileScreen({ navigation }) {
                         },
                       ]}
                     >
-                      {item.name}
+                      {name}
                     </Text>
-                    <Text style={cm.dialCode}>{item.dial}</Text>
+                    <Text style={cm.dialCode}>{dial}</Text>
                     {selected && (
                       <Icon
                         name="check"

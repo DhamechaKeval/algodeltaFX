@@ -38,9 +38,9 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
   const [sl, setSl] = useState('');
   const [tp, setTp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focused, setFocused] = useState(null);
   const debounceRef = useRef(null);
 
-  // ── Symbol search ─────────────────────────────────────────────
   const doSearch = async query => {
     if (!query.trim()) {
       setSuggestions([]);
@@ -49,34 +49,20 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
     }
     setSearching(true);
     try {
-      // Call directly with lowercase as API expects
       const res = await apiPost('/symbols/searchsymbol', {
         symbol: query.toLowerCase(),
       });
-
-      // Parse every possible response shape
-      let list = [];
-      if (Array.isArray(res)) {
-        list = res;
-      } else if (Array.isArray(res?.data)) {
-        list = res.data;
-      } else if (Array.isArray(res?.symbols)) {
-        list = res.symbols;
-      } else if (Array.isArray(res?.result)) {
-        list = res.result;
-      }
-
-      // Normalise to string array
-      const names = list
-        .map(s => {
-          if (typeof s === 'string') return s;
-          return s?.symbol || s?.name || s?.Symbol || '';
-        })
+      const raw = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res)
+        ? res
+        : [];
+      const list = raw
+        .map(s => (typeof s === 'string' ? s : s?.symbol || s?.name || ''))
         .filter(Boolean);
-
-      setSuggestions(names);
-      setShowSuggest(names.length > 0);
-    } catch (e) {
+      setSuggestions(list);
+      setShowSuggest(list.length > 0);
+    } catch {
       setSuggestions([]);
       setShowSuggest(false);
     } finally {
@@ -88,8 +74,6 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
     const upper = text.toUpperCase();
     setSymbol(upper);
     setShowSuggest(false);
-
-    // Debounce search
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (upper.trim().length >= 1) {
       debounceRef.current = setTimeout(() => doSearch(upper), 350);
@@ -150,12 +134,15 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
     setShowSuggest(false);
     setShowTypes(false);
     setSuggestions([]);
+    setFocused(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     onClose();
   };
 
   const selectedType =
     ORDER_TYPES.find(t => t.value === orderType)?.label || 'BUY';
+
+  const iBox = name => [s.inputBox, focused === name && s.inputBoxFocused];
 
   return (
     <Modal
@@ -166,7 +153,6 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
     >
       <View style={s.overlay}>
         <View style={s.sheet}>
-          {/* Header */}
           <View style={s.header}>
             <Text style={s.title}>Place Order</Text>
             <TouchableOpacity onPress={handleClose}>
@@ -184,9 +170,9 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled
           >
-            {/* ── Symbol ── */}
+            {/* Symbol */}
             <Text style={s.label}>Symbol *</Text>
-            <View style={s.inputBox}>
+            <View style={iBox('symbol')}>
               <TextInput
                 style={[s.inputText, { flex: 1 }]}
                 placeholder="Type Symbol e.g. BTCUSD"
@@ -195,6 +181,8 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
                 onChangeText={handleSymbolChange}
                 autoCapitalize="characters"
                 autoCorrect={false}
+                onFocus={() => setFocused('symbol')}
+                onBlur={() => setFocused(null)}
               />
               {searching ? (
                 <ActivityIndicator size="small" color={colors.primary} />
@@ -207,7 +195,6 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
               )}
             </View>
 
-            {/* Symbol suggestions */}
             {showSuggest && suggestions.length > 0 && (
               <View style={s.dropdown}>
                 {suggestions.slice(0, 8).map((sym, i) => (
@@ -227,12 +214,12 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
               </View>
             )}
 
-            {/* ── Order Type + Volume (equal width) ── */}
+            {/* Order Type + Volume */}
             <View style={s.row}>
               <View style={s.col}>
                 <Text style={s.label}>Order Type *</Text>
                 <TouchableOpacity
-                  style={s.inputBox}
+                  style={iBox('orderType')}
                   onPress={() => {
                     setShowTypes(v => !v);
                     setShowSuggest(false);
@@ -282,10 +269,9 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
                   </View>
                 )}
               </View>
-
               <View style={s.col}>
                 <Text style={s.label}>Volume *</Text>
-                <View style={s.inputBox}>
+                <View style={iBox('volume')}>
                   <TextInput
                     style={[s.inputText, { flex: 1 }]}
                     placeholder="0.01"
@@ -293,16 +279,18 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
                     value={volume}
                     onChangeText={setVolume}
                     keyboardType="decimal-pad"
+                    onFocus={() => setFocused('volume')}
+                    onBlur={() => setFocused(null)}
                   />
                 </View>
               </View>
             </View>
 
-            {/* ── SL + TP (equal width) ── */}
+            {/* SL + TP */}
             <View style={s.row}>
               <View style={s.col}>
                 <Text style={s.label}>Stop Loss (SL)</Text>
-                <View style={s.inputBox}>
+                <View style={iBox('sl')}>
                   <TextInput
                     style={[s.inputText, { flex: 1 }]}
                     placeholder="Enter Stop Loss"
@@ -310,12 +298,14 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
                     value={sl}
                     onChangeText={setSl}
                     keyboardType="decimal-pad"
+                    onFocus={() => setFocused('sl')}
+                    onBlur={() => setFocused(null)}
                   />
                 </View>
               </View>
               <View style={s.col}>
                 <Text style={s.label}>Target Profit (TP)</Text>
-                <View style={s.inputBox}>
+                <View style={iBox('tp')}>
                   <TextInput
                     style={[s.inputText, { flex: 1 }]}
                     placeholder="Enter Target Profit"
@@ -323,12 +313,13 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
                     value={tp}
                     onChangeText={setTp}
                     keyboardType="decimal-pad"
+                    onFocus={() => setFocused('tp')}
+                    onBlur={() => setFocused(null)}
                   />
                 </View>
               </View>
             </View>
 
-            {/* Buttons */}
             <View style={s.btnRow}>
               <Button
                 label="Close"
@@ -393,6 +384,7 @@ const s = StyleSheet.create({
     height: 46,
     marginBottom: spacing.md,
   },
+  inputBoxFocused: { borderColor: colors.primary },
   inputText: { fontSize: typography.sm, color: colors.textPrimary },
   row: { flexDirection: 'row', gap: spacing.sm },
   col: { flex: 1 },

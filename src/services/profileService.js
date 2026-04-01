@@ -5,7 +5,7 @@ const PROFILE_IMG = 'https://api.algodeltafx.com/user_profiles';
 
 const getToken = async () => await AsyncStorage.getItem('token');
 
-// ── Decode user_id from JWT token ─────────────────────────────────
+// ── Decode user_id from JWT ───────────────────────────────────────
 export const getUserIdFromToken = async () => {
   try {
     const token = await getToken();
@@ -18,8 +18,7 @@ export const getUserIdFromToken = async () => {
   }
 };
 
-// ── Get profile photo URL ─────────────────────────────────────────
-// Pattern: https://api.algodeltafx.com/user_profiles/{user_id}.jpg
+// ── Profile photo URL ─────────────────────────────────────────────
 export const getProfilePhotoUrl = async () => {
   const userId = await getUserIdFromToken();
   if (!userId) return null;
@@ -43,6 +42,16 @@ export const updateUserProfile = async formData => {
     method: 'POST',
     headers: { Authorization: token, Accept: '*/*' },
     body: formData,
+  });
+  return res.json();
+};
+
+// ── Get countries list (used in Profile + Wallet) ─────────────────
+export const getCountries = async () => {
+  const token = await getToken();
+  const res = await fetch(`${BASE_URL}/users/getcountries`, {
+    method: 'GET',
+    headers: { Authorization: token, Accept: '*/*' },
   });
   return res.json();
 };

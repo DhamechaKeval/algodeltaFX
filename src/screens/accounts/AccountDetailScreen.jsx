@@ -179,6 +179,7 @@ export default function AccountDetailScreen({ route, navigation }) {
   const [search, setSearch] = useState('');
   const [showOrder, setShowOrder] = useState(false);
   const [editPos, setEditPos] = useState(null);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const freeMargin = account_info?.margin_free ?? 0;
   const pnl = account_info?.floating_profit ?? 0;
@@ -397,13 +398,7 @@ export default function AccountDetailScreen({ route, navigation }) {
       <View style={detailStyles.toolbar}>
         <TouchableOpacity
           style={detailStyles.exportBtn}
-          onPress={() =>
-            exportToCSV(
-              data,
-              tab,
-              account.broker_combine_name || account.nic_name,
-            )
-          }
+          onPress={() => exportToCSV(data, tab)}
         >
           <Icon
             name="download"
@@ -430,11 +425,16 @@ export default function AccountDetailScreen({ route, navigation }) {
           <Text style={detailStyles.refreshTxt}>Refresh</Text>
         </TouchableOpacity>
         {/* Search */}
-        <View style={s.searchBox}>
+        <View
+          style={[
+            s.searchBox,
+            searchFocused && { borderColor: colors.primary },
+          ]}
+        >
           <Icon
             name="search"
             size={12}
-            color={colors.textMuted}
+            color={searchFocused ? colors.primary : colors.textMuted}
             strokeWidth={1.8}
           />
           <TextInput
@@ -443,6 +443,8 @@ export default function AccountDetailScreen({ route, navigation }) {
             placeholderTextColor={colors.textPlaceholder}
             value={search}
             onChangeText={setSearch}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
           />
         </View>
       </View>

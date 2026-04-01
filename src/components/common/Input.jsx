@@ -19,17 +19,22 @@ export default function Input({
   ...rest
 }) {
   const [secure, setSecure] = useState(password);
+  const [focused, setFocused] = useState(false);
 
   return (
     <View style={[s.wrap, style]}>
       {label ? <Text style={s.label}>{label}</Text> : null}
-      <View style={[s.inputWrap, error && s.inputError]}>
+      <View
+        style={[s.inputWrap, focused && s.inputFocused, error && s.inputError]}
+      >
         <TextInput
           style={s.input}
           placeholderTextColor={colors.textPlaceholder}
           secureTextEntry={secure}
           autoCapitalize="none"
           autoCorrect={false}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           {...rest}
         />
         {password && (
@@ -37,7 +42,7 @@ export default function Input({
             <Icon
               name={secure ? 'eye-off' : 'eye'}
               size={18}
-              color={colors.textMuted}
+              color={focused ? colors.primary : colors.textMuted}
               strokeWidth={1.8}
             />
           </TouchableOpacity>
@@ -61,10 +66,11 @@ const s = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.bgInput,
     borderWidth: 1,
-    borderColor: colors.bgInputBorder,
+    borderColor: colors.border,
     borderRadius: spacing.radius.md,
     paddingHorizontal: spacing.md,
   },
+  inputFocused: { borderColor: colors.primary },
   inputError: { borderColor: colors.error },
   input: {
     flex: 1,

@@ -22,6 +22,7 @@ export default function DaySlTpModal({ visible, onClose, item }) {
   const [sl, setSl] = useState('');
   const [tp, setTp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focused, setFocused] = useState(null);
 
   useEffect(() => {
     if (visible && item) {
@@ -29,7 +30,6 @@ export default function DaySlTpModal({ visible, onClose, item }) {
       const hasTp = item.day_tp && item.day_tp > 0;
       setSlEnabled(!!hasSl);
       setTpEnabled(!!hasTp);
-      // Only pre-fill if values exist — don't pre-fill with 0
       setSl(hasSl ? String(item.day_sl) : '');
       setTp(hasTp ? String(item.day_tp) : '');
     }
@@ -44,17 +44,13 @@ export default function DaySlTpModal({ visible, onClose, item }) {
       Alert.alert('Error', 'Please enter a Target Profit value.');
       return;
     }
-
-    const daySlVal = slEnabled && sl.trim() ? Number(sl) : 0;
-    const dayTpVal = tpEnabled && tp.trim() ? Number(tp) : 0;
-
     setLoading(true);
     try {
       const res = await setSlTp(
         item.broker_id,
-        !!(slEnabled || tpEnabled), // ← boolean, not number
-        daySlVal,
-        dayTpVal,
+        !!(slEnabled || tpEnabled),
+        slEnabled && sl.trim() ? Number(sl) : 0,
+        tpEnabled && tp.trim() ? Number(tp) : 0,
       );
       if (res?.status === true) {
         Alert.alert('Success', 'Day SL & TP updated successfully!');
@@ -74,8 +70,15 @@ export default function DaySlTpModal({ visible, onClose, item }) {
     setTp('');
     setSlEnabled(false);
     setTpEnabled(false);
+    setFocused(null);
     onClose(false);
   };
+
+  const iStyle = (name, enabled) => [
+    s.input,
+    focused === name && enabled && s.inputFocused,
+    !enabled && s.inputDisabled,
+  ];
 
   return (
     <Modal
@@ -98,44 +101,46 @@ export default function DaySlTpModal({ visible, onClose, item }) {
             </TouchableOpacity>
           </View>
 
-          {/* Stop Loss */}
           <View style={s.fieldRow}>
             <Text style={s.fieldLabel}>Stop Loss (SL)</Text>
             <Switch
               value={slEnabled}
-              onValueChange={val => setSlEnabled(!!val)} // ← force boolean
+              onValueChange={v => setSlEnabled(!!v)}
               trackColor={{ false: colors.borderLight, true: colors.primary }}
               thumbColor="#fff"
             />
           </View>
           <TextInput
-            style={[s.input, !slEnabled && s.inputDisabled]}
+            style={iStyle('sl', slEnabled)}
             placeholder="Enter Stop Loss"
             placeholderTextColor={colors.textPlaceholder}
             value={sl}
             onChangeText={setSl}
             keyboardType="decimal-pad"
-            editable={slEnabled === true} // ← explicit boolean, never a number
+            editable={slEnabled === true}
+            onFocus={() => setFocused('sl')}
+            onBlur={() => setFocused(null)}
           />
 
-          {/* Target Profit */}
           <View style={s.fieldRow}>
             <Text style={s.fieldLabel}>Target Profit (TP)</Text>
             <Switch
               value={tpEnabled}
-              onValueChange={val => setTpEnabled(!!val)} // ← force boolean
+              onValueChange={v => setTpEnabled(!!v)}
               trackColor={{ false: colors.borderLight, true: colors.primary }}
               thumbColor="#fff"
             />
           </View>
           <TextInput
-            style={[s.input, !tpEnabled && s.inputDisabled]}
+            style={iStyle('tp', tpEnabled)}
             placeholder="Enter Target Profit"
             placeholderTextColor={colors.textPlaceholder}
             value={tp}
             onChangeText={setTp}
             keyboardType="decimal-pad"
-            editable={tpEnabled === true} // ← explicit boolean, never a number
+            editable={tpEnabled === true}
+            onFocus={() => setFocused('tp')}
+            onBlur={() => setFocused(null)}
           />
 
           <View style={s.btnRow}>
@@ -197,7 +202,7 @@ const s = StyleSheet.create({
   input: {
     backgroundColor: colors.bgInput,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.border,
     borderRadius: spacing.radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
@@ -205,6 +210,7 @@ const s = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.base,
   },
+  inputFocused: { borderColor: colors.primary },
   inputDisabled: { borderColor: colors.border, opacity: 0.4 },
   btnRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
 });

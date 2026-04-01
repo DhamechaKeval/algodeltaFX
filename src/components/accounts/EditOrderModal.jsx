@@ -24,8 +24,8 @@ export default function EditOrderModal({
   const [sl, setSl] = useState('');
   const [tp, setTp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focused, setFocused] = useState(null);
 
-  // Pre-fill current SL/TP when modal opens
   useEffect(() => {
     if (visible && position) {
       setSl(position?.sl ? String(position.sl) : '');
@@ -36,14 +36,13 @@ export default function EditOrderModal({
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const body = {
+      const res = await modifyOrder({
         ticket_id: position?.ticket || position?.id,
         broker_id: brokerId,
         price: position?.price_open ?? position?.price ?? 0,
         sl: sl.trim() ? Number(sl) : 0,
         tp: tp.trim() ? Number(tp) : 0,
-      };
-      const res = await modifyOrder(body);
+      });
       if (res?.status === true) {
         Alert.alert('Success', 'Order modified successfully!');
         onClose(true);
@@ -60,8 +59,11 @@ export default function EditOrderModal({
   const handleClose = () => {
     setSl('');
     setTp('');
+    setFocused(null);
     onClose(false);
   };
+
+  const iStyle = name => [s.input, focused === name && s.inputFocused];
 
   return (
     <Modal
@@ -72,10 +74,9 @@ export default function EditOrderModal({
     >
       <View style={s.overlay}>
         <View style={s.sheet}>
-          {/* Header */}
           <View style={s.header}>
             <Text style={s.title}>Edit Order</Text>
-            <TouchableOpacity onPress={handleClose} style={s.closeBtn}>
+            <TouchableOpacity onPress={handleClose}>
               <Icon
                 name="x"
                 size={20}
@@ -85,7 +86,6 @@ export default function EditOrderModal({
             </TouchableOpacity>
           </View>
 
-          {/* Position info */}
           {position && (
             <View style={s.posInfo}>
               <Text style={s.posSymbol}>{position?.symbol}</Text>
@@ -100,29 +100,30 @@ export default function EditOrderModal({
             </View>
           )}
 
-          {/* SL input */}
           <Text style={s.label}>Stop Loss (SL)</Text>
           <TextInput
-            style={s.input}
+            style={iStyle('sl')}
             placeholder="Not Set"
             placeholderTextColor={colors.textPlaceholder}
             value={sl}
             onChangeText={setSl}
             keyboardType="decimal-pad"
+            onFocus={() => setFocused('sl')}
+            onBlur={() => setFocused(null)}
           />
 
-          {/* TP input */}
           <Text style={s.label}>Target Profit (TP)</Text>
           <TextInput
-            style={s.input}
+            style={iStyle('tp')}
             placeholder="Not Set"
             placeholderTextColor={colors.textPlaceholder}
             value={tp}
             onChangeText={setTp}
             keyboardType="decimal-pad"
+            onFocus={() => setFocused('tp')}
+            onBlur={() => setFocused(null)}
           />
 
-          {/* Buttons */}
           <View style={s.btnRow}>
             <Button
               label="Cancel"
@@ -168,7 +169,6 @@ const s = StyleSheet.create({
     fontWeight: typography.bold,
     color: colors.textPrimary,
   },
-  closeBtn: { padding: spacing.xs },
   posInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -230,5 +230,6 @@ const s = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.md,
   },
+  inputFocused: { borderColor: colors.primary },
   btnRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.sm },
 });

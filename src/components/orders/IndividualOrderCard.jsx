@@ -34,6 +34,7 @@ export default function IndividualOrderCard({ item, index }) {
         <Text style={s.idTxt}>{index + 1}</Text>
         <View style={{ flex: 1 }}>
           <Text style={s.symbol}>{item?.symbol || '—'}</Text>
+          <Text style={s.ticket}>{item?.broker_combine_name || ''}</Text>
           <Text style={s.ticket}>
             #{item?.ticket || item?.order_id || item?.id || '—'}
           </Text>
@@ -44,15 +45,6 @@ export default function IndividualOrderCard({ item, index }) {
               {isBuy ? 'BUY' : 'SELL'}
             </Text>
           </View>
-          <Text
-            style={[
-              s.pnl,
-              pnl >= 0 ? { color: colors.primary } : { color: colors.error },
-            ]}
-          >
-            {pnl >= 0 ? '+' : ''}
-            {pnl}
-          </Text>
         </View>
       </View>
 
@@ -71,13 +63,14 @@ export default function IndividualOrderCard({ item, index }) {
           value={item?.stop_limit_price ?? item?.stop_limit ?? 0}
         />
         <StatBox
-          label="Account"
-          value={item?.nic_name ?? item?.broker_name ?? item?.account_name}
+          label="State"
+          value={
+            <Text style={item?.is_failed ? s.failedTxt : s.filledTxt}>
+              {item?.is_failed ? 'FAILED' : 'FILLED'}
+            </Text>
+          }
         />
-        <StatBox
-          label="Group"
-          value={item?.group_name ?? item?.group_order_id}
-        />
+        <StatBox label="Order From" value={item?.order_from} />
         <View style={{ flex: 1 }} />
       </View>
 
@@ -144,6 +137,16 @@ const s = StyleSheet.create({
     fontSize: typography.xs + 1,
     fontWeight: '700',
     color: colors.error,
+  },
+  failedTxt: {
+    fontSize: typography.xs + 1,
+    fontWeight: '700',
+    color: colors.error,
+  },
+  filledTxt: {
+    fontSize: typography.xs + 1,
+    fontWeight: '700',
+    color: colors.primary,
   },
   pnl: { fontSize: typography.xs + 1, fontWeight: '700' },
 

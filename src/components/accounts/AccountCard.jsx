@@ -188,12 +188,12 @@ export default function AccountCard({
 
         {/* Stats row 1 */}
         <View style={accountStyles.statsRow}>
-          <StatBox label="Equity" value={Number(equity)} />
+          <StatBox label="Equity" value={Number(equity).toFixed(2)} />
           <StatBox label="POS" value={positions_count} />
           <StatBox label="Pending" value={orders_count} />
           <StatBox
             label="P&L"
-            value={Number(floating_profit).toFixed(4)}
+            value={Number(floating_profit).toFixed(2)}
             green={floating_profit > 0}
             red={floating_profit < 0}
           />
@@ -205,7 +205,7 @@ export default function AccountCard({
           <StatBox label="In Group" value={group_involve_count} />
           <StatBox
             label="Free Margin"
-            value={Number(margin_free)}
+            value={Number(margin_free).toFixed(2)}
             flex={2}
           />
         </View>

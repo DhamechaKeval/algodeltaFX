@@ -116,8 +116,8 @@ export default function OrderDetailsTab() {
             <OrderDetailCard item={item} index={index} />
           )}
           contentContainerStyle={{
-            padding: spacing.base,
-            paddingBottom: spacing.xxl,
+            paddingHorizontal: spacing.base,
+            paddingVertical: spacing.sm + 2,
           }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

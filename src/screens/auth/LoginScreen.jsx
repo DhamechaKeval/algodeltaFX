@@ -275,7 +275,6 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderColor: colors.primary,
     borderWidth: 1,
-    elevation: 3,
   },
   inputRow: { position: 'relative', marginBottom: spacing.base },
   inputFlex: { marginBottom: 0, paddingRight: 44 },

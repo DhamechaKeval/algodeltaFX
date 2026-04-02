@@ -68,7 +68,6 @@ export const accountStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: spacing.sm,
   },
   togglesWrap: {
     flexDirection: 'row',

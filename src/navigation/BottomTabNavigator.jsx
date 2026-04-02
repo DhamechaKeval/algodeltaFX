@@ -8,7 +8,7 @@ import { typography } from '../theme/typography';
 import { spacing } from '../theme/spacing';
 
 import AccountsScreen from '../screens/accounts/AccountsScreen';
-import CopyTradingScreen from '../screens/copytrading/CopyTradingScreen';
+import CopyTradeScreen from '../screens/copytrading/CopyTradeScreen';
 import OrdersScreen from '../screens/orders/OrdersScreen';
 import WalletScreen from '../screens/wallet/WalletScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
@@ -70,7 +70,7 @@ export default function BottomTabNavigator() {
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Accounts" component={AccountsScreen} />
-      <Tab.Screen name="CopyTrading" component={CopyTradingScreen} />
+      <Tab.Screen name="CopyTrading" component={CopyTradeScreen} />
       <Tab.Screen name="Orders" component={OrdersScreen} />
       <Tab.Screen name="Wallet" component={WalletScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />

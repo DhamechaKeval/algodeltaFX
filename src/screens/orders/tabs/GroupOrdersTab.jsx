@@ -122,8 +122,8 @@ export default function GroupOrdersTab({ navigation }) {
             <GroupOrderCard item={item} index={index} onView={handleView} />
           )}
           contentContainerStyle={{
-            padding: spacing.base,
-            paddingBottom: spacing.xxl,
+            paddingHorizontal: spacing.base,
+            paddingVertical: spacing.sm + 2,
           }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

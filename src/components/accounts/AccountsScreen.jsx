@@ -90,8 +90,8 @@ export default function AccountsScreen() {
             />
           )}
           contentContainerStyle={{
-            padding: spacing.base,
-            paddingBottom: spacing.xxl,
+            paddingHorizontal: spacing.base,
+            paddingVertical: spacing.sm + 2,
           }}
           showsVerticalScrollIndicator={false}
           refreshControl={

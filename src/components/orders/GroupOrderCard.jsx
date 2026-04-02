@@ -70,8 +70,8 @@ export default function GroupOrderCard({ item, index, onView }) {
         <StatBox label="Order Form" value={item?.order_from} />
         <StatBox
           label="Filled"
-          value={item?.state_1_count}
-          green={item?.filled_orders > 0}
+          value={item?.state_4_count}
+          green={item?.state_4_count > 0}
         />
       </View>
 
@@ -80,8 +80,8 @@ export default function GroupOrderCard({ item, index, onView }) {
         <StatBox label="Place Order" value={item?.state_2_count} />
         <StatBox
           label="Cancel Order"
-          value={item?.state_4_count}
-          red={item?.cancel_order > 0}
+          value={item?.state_1_count}
+          red={item?.state_1_count > 0}
         />
         <StatBox
           label="Failed Order"

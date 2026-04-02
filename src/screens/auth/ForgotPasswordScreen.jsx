@@ -144,8 +144,6 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderColor: colors.primary,
     borderWidth: 1,
-
-    elevation: 3,
   },
   btn: {
     backgroundColor: colors.primary,

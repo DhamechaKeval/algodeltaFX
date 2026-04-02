@@ -181,8 +181,8 @@ export default function OrdersScreen({ navigation }) {
               }
               renderItem={renderItem}
               contentContainerStyle={{
-                padding: spacing.base,
-                paddingBottom: spacing.xxl,
+                paddingHorizontal: spacing.base,
+                paddingVertical: spacing.sm + 2,
               }}
               showsVerticalScrollIndicator={false}
               ListEmptyComponent={

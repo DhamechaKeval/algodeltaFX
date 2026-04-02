@@ -492,8 +492,8 @@ export default function AccountDetailScreen({ route, navigation }) {
           }
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
-            padding: spacing.base,
-            paddingBottom: spacing.xxl,
+            paddingHorizontal: spacing.base,
+            paddingVertical: spacing.sm + 2,
           }}
           refreshControl={
             <RefreshControl

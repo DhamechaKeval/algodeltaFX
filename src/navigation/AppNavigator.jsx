@@ -10,6 +10,7 @@ import AuthNavigator from './AuthNavigator';
 import BottomTabNavigator from './BottomTabNavigator';
 import AccountDetailScreen from '../screens/accounts/AccountDetailScreen';
 import GroupOrderDetailScreen from '../screens/orders/GroupOrderDetailScreen';
+import GroupDetailScreen from '../screens/copytrading/GroupDetailScreen';
 import { colors } from '../theme/colors';
 import { setNavigatorRef } from '../services/api';
 
@@ -59,6 +60,7 @@ export default function AppNavigator() {
           name="GroupOrderDetail"
           component={GroupOrderDetailScreen}
         />
+        <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

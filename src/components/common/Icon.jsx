@@ -207,6 +207,12 @@ export default function Icon({
           <Polyline points="6,9 12,15 18,9" />
         </Svg>
       );
+    case 'chevron-up':
+      return (
+        <Svg {...props}>
+          <Polyline points="15,18 9,12 15,6" />
+        </Svg>
+      );
 
     case 'chevron-right':
       return (
@@ -356,7 +362,53 @@ export default function Icon({
           <Path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
         </Svg>
       );
-
+    case 'positions':
+      return (
+        <Svg {...props}>
+          <Rect x="3" y="7" width="18" height="13" rx="2" />
+          <Path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+        </Svg>
+      );
+    case 'pending-orders':
+      return (
+        <Svg {...props}>
+          <Rect x="4" y="3" width="16" height="18" rx="2" />
+          <Polyline points="9,11 12,14 16,10" />
+          <Path d="M9 3h6v3H9z" />
+        </Svg>
+      );
+    case 'lan-disconnect':
+      return (
+        <Svg {...props}>
+          {/* Plug body */}
+          <Path d="M8 3v6M16 3v6" />
+          <Path d="M6 9h12v3a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9z" />
+          <Path d="M12 16v5" />
+          <Line x1="3" y1="3" x2="21" y2="21" />
+        </Svg>
+      );
+    case 'edit':
+      return (
+        <Svg {...props}>
+          <Path d="M12 20h9" />
+          <Path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+        </Svg>
+      );
+    case 'cancel-all':
+      return (
+        <Svg {...props}>
+          <Line x1="18" y1="6" x2="6" y2="18" />
+          <Line x1="6" y1="6" x2="18" y2="18" />
+        </Svg>
+      );
+    case 'square-off':
+      return (
+        <Svg {...props}>
+          <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <Polyline points="16,17 21,12 16,7" />
+          <Line x1="21" y1="12" x2="9" y2="12" />
+        </Svg>
+      );
     default:
       // Fallback: simple circle
       return (

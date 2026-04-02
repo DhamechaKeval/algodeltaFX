@@ -9,7 +9,7 @@ import { spacing } from '../theme/spacing';
 
 import AccountsScreen from '../screens/accounts/AccountsScreen';
 import CopyTradingScreen from '../screens/copytrading/CopyTradingScreen';
-import OrderHistoryScreen from '../screens/orders/OrderHistoryScreen';
+import OrdersScreen from '../screens/orders/OrdersScreen';
 import WalletScreen from '../screens/wallet/WalletScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 
@@ -71,7 +71,7 @@ export default function BottomTabNavigator() {
     >
       <Tab.Screen name="Accounts" component={AccountsScreen} />
       <Tab.Screen name="CopyTrading" component={CopyTradingScreen} />
-      <Tab.Screen name="Orders" component={OrderHistoryScreen} />
+      <Tab.Screen name="Orders" component={OrdersScreen} />
       <Tab.Screen name="Wallet" component={WalletScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>

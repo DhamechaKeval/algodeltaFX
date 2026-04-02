@@ -159,7 +159,6 @@ export default function AccountsScreen({ navigation }) {
             color={colors.primaryText}
             strokeWidth={2}
           />
-          <Text style={s.addBtnTxt}>Add Account</Text>
         </TouchableOpacity>
       </View>
 
@@ -290,12 +289,12 @@ const s = StyleSheet.create({
     height: TOOL_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
     backgroundColor: colors.primary,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: spacing.radius.md,
     paddingHorizontal: spacing.md,
+    // fontWeight: typography.bold,
   },
   addBtnTxt: {
     fontSize: typography.xs + 1,

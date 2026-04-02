@@ -15,6 +15,7 @@ import AppHeader from '../../components/common/AppHeader';
 import Icon from '../../components/common/Icon';
 import GroupOrderCard from '../../components/orders/GroupOrderCard';
 import IndividualOrderCard from '../../components/orders/IndividualOrderCard';
+import OrderDetailsTab from './tabs/OrderDetailsTab';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
@@ -23,7 +24,28 @@ import {
   getIndividualOrderHistory,
 } from '../../services/orderService';
 
-const TABS = ['Group Orders', 'Individual Orders'];
+const TABS = ['Group Orders', 'Individual Orders', 'Order Details'];
+
+const TYPE_MAP = {
+  0: 'buy',
+  1: 'sell',
+  2: 'buy limit',
+  3: 'sell limit',
+  4: 'buy stop',
+  5: 'sell stop',
+};
+
+const matchesSearch = (item, q) => {
+  if (!q.trim()) return true;
+  const lower = q.toLowerCase();
+  return Object.entries(item || {}).some(([key, v]) => {
+    if (key === 'type') return (TYPE_MAP[v] ?? '').includes(lower);
+    return String(v ?? '')
+      .toLowerCase()
+      .includes(lower);
+  });
+};
+
 const parseList = res =>
   Array.isArray(res?.data)
     ? res.data
@@ -33,18 +55,9 @@ const parseList = res =>
     ? res
     : [];
 
-// Search any field recursively
-const matchesSearch = (item, q) => {
-  if (!q.trim()) return true;
-  const lower = q.toLowerCase();
-  return Object.values(item || {}).some(v =>
-    String(v ?? '')
-      .toLowerCase()
-      .includes(lower),
-  );
-};
+// Maps numeric codes to searchable text
 
-export default function OrderHistoryScreen({ navigation }) {
+export default function OrdersScreen({ navigation }) {
   const [tab, setTab] = useState(0);
   const [groupOrders, setGroupOrders] = useState([]);
   const [indivOrders, setIndivOrders] = useState([]);
@@ -75,12 +88,10 @@ export default function OrderHistoryScreen({ navigation }) {
     fetchAll();
   }, [fetchAll]);
 
-  // Reset search on tab change
   const handleTabChange = i => {
     setTab(i);
     setSearch('');
   };
-
   const handleViewGroup = group =>
     navigation.navigate('GroupOrderDetail', { group });
 
@@ -112,79 +123,90 @@ export default function OrderHistoryScreen({ navigation }) {
             style={[s.tabBtn, tab === i && s.tabActive]}
             onPress={() => handleTabChange(i)}
           >
-            <Text style={[s.tabTxt, tab === i && s.tabTxtActive]}>{t}</Text>
+            <Text
+              style={[s.tabTxt, tab === i && s.tabTxtActive]}
+              numberOfLines={1}
+            >
+              {t}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Search */}
-      <View style={s.searchRow}>
-        <View style={[s.searchBox, sFocused && s.searchFocused]}>
-          <Icon
-            name="search"
-            size={14}
-            color={sFocused ? colors.primary : colors.textMuted}
-            strokeWidth={1.8}
-          />
-          <TextInput
-            style={s.searchInput}
-            placeholder="Search by any field..."
-            placeholderTextColor={colors.textPlaceholder}
-            value={search}
-            onChangeText={setSearch}
-            onFocus={() => setSFocused(true)}
-            onBlur={() => setSFocused(false)}
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch('')}>
-              <Icon
-                name="x"
-                size={13}
-                color={colors.textMuted}
-                strokeWidth={2}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-
-      {/* Content */}
-      {loading ? (
-        <View style={s.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+      {/* Tab 3 — Order Details (separate file) */}
+      {tab === 2 ? (
+        <OrderDetailsTab />
       ) : (
-        <FlatList
-          data={data}
-          keyExtractor={(item, i) =>
-            String(item?.group_order_id || item?.ticket || item?.id || i)
-          }
-          renderItem={renderItem}
-          contentContainerStyle={{
-            padding: spacing.base,
-            paddingBottom: spacing.xxl,
-          }}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={s.center}>
+        <>
+          {/* Search — tab 0 and 1 only */}
+          <View style={s.searchRow}>
+            <View style={[s.searchBox, sFocused && s.searchFocused]}>
               <Icon
-                name="orders"
-                size={40}
-                color={colors.textMuted}
-                strokeWidth={1}
+                name="search"
+                size={14}
+                color={sFocused ? colors.primary : colors.textMuted}
+                strokeWidth={1.8}
               />
-              <Text style={s.emptyTxt}>{emptyMsg}</Text>
+              <TextInput
+                style={s.searchInput}
+                placeholder="Search by any field..."
+                placeholderTextColor={colors.textPlaceholder}
+                value={search}
+                onChangeText={setSearch}
+                onFocus={() => setSFocused(true)}
+                onBlur={() => setSFocused(false)}
+              />
+              {search.length > 0 && (
+                <TouchableOpacity onPress={() => setSearch('')}>
+                  <Icon
+                    name="x"
+                    size={13}
+                    color={colors.textMuted}
+                    strokeWidth={2}
+                  />
+                </TouchableOpacity>
+              )}
             </View>
-          }
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => fetchAll(true)}
-              tintColor={colors.primary}
-              colors={[colors.primary]}
+          </View>
+
+          {loading ? (
+            <View style={s.center}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : (
+            <FlatList
+              data={data}
+              keyExtractor={(item, i) =>
+                String(item?.group_order_id || item?.ticket || item?.id || i)
+              }
+              renderItem={renderItem}
+              contentContainerStyle={{
+                padding: spacing.base,
+                paddingBottom: spacing.xxl,
+              }}
+              showsVerticalScrollIndicator={false}
+              ListEmptyComponent={
+                <View style={s.center}>
+                  <Icon
+                    name="orders"
+                    size={40}
+                    color={colors.textMuted}
+                    strokeWidth={1}
+                  />
+                  <Text style={s.emptyTxt}>{emptyMsg}</Text>
+                </View>
+              }
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={() => fetchAll(true)}
+                  tintColor={colors.primary}
+                  colors={[colors.primary]}
+                />
+              }
             />
-          }
-        />
+          )}
+        </>
       )}
     </View>
   );

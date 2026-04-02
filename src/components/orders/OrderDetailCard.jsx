@@ -22,7 +22,7 @@ function StatBox({ label, value, green, red }) {
   );
 }
 
-export default function IndividualOrderCard({ item, index }) {
+export default function OrderDetailCard({ item, index }) {
   const isBuy =
     String(item?.type ?? '').toUpperCase() === 'BUY' || item?.type === 0;
 
@@ -92,7 +92,6 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: spacing.md,
   },
-
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -148,7 +147,6 @@ const s = StyleSheet.create({
     color: colors.primary,
   },
   pnl: { fontSize: typography.xs + 1, fontWeight: '700' },
-
   row: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xs },
   box: {
     flex: 1,
@@ -168,7 +166,6 @@ const s = StyleSheet.create({
     fontWeight: '600',
     color: colors.textPrimary,
   },
-
   time: {
     fontSize: typography.xs - 1,
     color: colors.textMuted,

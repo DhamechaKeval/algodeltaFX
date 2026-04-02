@@ -1,3 +1,5 @@
+// src/screens/wallet/WalletScreen.jsx
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
@@ -15,6 +17,7 @@ import {
 import { WebView } from 'react-native-webview';
 import AppHeader from '../../components/common/AppHeader';
 import Icon from '../../components/common/Icon';
+import SearchBar from '../../components/common/SearchBar';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
@@ -35,6 +38,37 @@ const WALLET_COUNTRIES = [
   { label: 'OTHER', value: 'OTHER' },
 ];
 
+// ── Build a searchable string for every possible amount format ───────────
+// Handles: "8", "8$", "-8$", "+8$", "$8", "8 $", "-8 $", etc.
+function buildAmountSearchTokens(tx) {
+  const raw = tx?.amount ?? '';
+  const num = parseFloat(String(raw));
+  if (isNaN(num)) return [];
+
+  const isDebit = String(tx?.transaction_type || tx?.type || '')
+    .toLowerCase()
+    .includes('debit');
+
+  const sign = isDebit ? '-' : '+';
+  const abs = Math.abs(num);
+  const absStr = String(abs);
+  const signedStr = `${sign}${abs}`;
+
+  // All formats a user might type:
+  return [
+    absStr, // "8"
+    `${absStr}$`, // "8$"
+    `$${absStr}`, // "$8"
+    `${absStr} $`, // "8 $"
+    signedStr, // "+8" or "-8"
+    `${signedStr}$`, // "+8$" or "-8$"
+    `${signedStr} $`, // "+8 $" or "-8 $"
+    `$${signedStr}`, // "$+8" or "$-8"
+    String(num), // covers decimals like "8.5"
+    `${String(num)}$`,
+  ];
+}
+
 export default function WalletScreen() {
   const [country, setCountry] = useState(WALLET_COUNTRIES[0]);
   const [showCountry, setShowCountry] = useState(false);
@@ -48,6 +82,8 @@ export default function WalletScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [paymentHtml, setPaymentHtml] = useState('');
   const [showPayment, setShowPayment] = useState(false);
+  const [txSearch, setTxSearch] = useState('');
+
   const debounceRef = useRef(null);
 
   // ── Fetch ledger ──────────────────────────────────────────────
@@ -65,7 +101,6 @@ export default function WalletScreen() {
         const list = Array.isArray(res?.data) ? res.data : [];
         allData = [...allData, ...list];
         const total = res?.total_records || 0;
-
         if (allData.length >= total) break;
         offset += limit;
       }
@@ -79,6 +114,7 @@ export default function WalletScreen() {
       setRefreshing(false);
     }
   }, []);
+
   useEffect(() => {
     fetchLedger();
   }, [fetchLedger]);
@@ -99,7 +135,6 @@ export default function WalletScreen() {
       setInrLoading(true);
       try {
         const res = await getInr(Number(amount));
-        // Try all possible field names
         const inr = res.amount_inr ?? null;
         if (inr) setInrText(`INR Equivalent: ₹${inr}`);
       } catch {
@@ -110,6 +145,45 @@ export default function WalletScreen() {
     }, 600);
     return () => clearTimeout(debounceRef.current);
   }, [amount, country]);
+
+  // ── Search filter ─────────────────────────────────────────────
+  const filteredLedger =
+    txSearch.trim() === ''
+      ? ledger
+      : ledger.filter(tx => {
+          const q = txSearch.trim().toLowerCase();
+
+          // Standard text fields
+          const textFields = [
+            tx?.description,
+            tx?.desc,
+            tx?.remarks,
+            tx?.transaction_type,
+            tx?.type,
+            tx?.create_time,
+            tx?.created_at,
+            tx?.time,
+            String(tx?.id ?? ''),
+          ];
+
+          const textMatch = textFields.some(
+            f => f && String(f).toLowerCase().includes(q),
+          );
+
+          if (textMatch) return true;
+
+          // ── Amount search — strip $, +, - from query then compare ──
+          // Normalize query: remove $ and spaces so "8$", "$8", "8 $" all → "8"
+          const qNorm = q.replace(/[$\s]/g, ''); // "-8" or "+8" or "8"
+
+          // Check against all generated tokens
+          const amtTokens = buildAmountSearchTokens(tx);
+          const amtMatch = amtTokens.some(token =>
+            token.toLowerCase().includes(qNorm),
+          );
+
+          return amtMatch;
+        });
 
   // ── Make payment ──────────────────────────────────────────────
   const handleAdd = async () => {
@@ -157,8 +231,8 @@ export default function WalletScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingInline: spacing.base,
-          paddingBlock: spacing.sm + 2,
+          paddingHorizontal: spacing.base,
+          paddingVertical: spacing.sm + 2,
         }}
         refreshControl={
           <RefreshControl
@@ -173,7 +247,6 @@ export default function WalletScreen() {
         <View style={s.addSection}>
           <Text style={s.sectionTitle}>Add Amount</Text>
           <View style={s.addRow}>
-            {/* Country */}
             <TouchableOpacity
               style={[s.box, showCountry && s.boxFocused]}
               onPress={() => setShowCountry(v => !v)}
@@ -188,12 +261,11 @@ export default function WalletScreen() {
               />
             </TouchableOpacity>
 
-            {/* Amount */}
             <View style={[s.box, amtFocused && s.boxFocused]}>
               <TextInput
                 style={s.amtInput}
                 placeholder="Enter Amount"
-                placeholderTextColor={colors.textPlaceholder}
+                placeholderTextColor={colors.textMuted}
                 value={amount}
                 onChangeText={setAmount}
                 keyboardType="decimal-pad"
@@ -202,7 +274,6 @@ export default function WalletScreen() {
               />
             </View>
 
-            {/* Add */}
             <TouchableOpacity
               style={[s.addBtn, paying && { opacity: 0.7 }]}
               onPress={handleAdd}
@@ -216,7 +287,6 @@ export default function WalletScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Country dropdown */}
           {showCountry && (
             <View style={s.dropdown}>
               {WALLET_COUNTRIES.map((c, i) => (
@@ -258,7 +328,6 @@ export default function WalletScreen() {
             </View>
           )}
 
-          {/* INR Equivalent */}
           {country.value === 'INDIA' && amount.trim() !== '' && (
             <View style={{ marginTop: spacing.sm, minHeight: 20 }}>
               {inrLoading ? (
@@ -270,7 +339,7 @@ export default function WalletScreen() {
           )}
         </View>
 
-        {/* ── Transaction History ── */}
+        {/* ── Transaction History header ── */}
         <View style={s.sectionHeader}>
           <Text style={s.sectionTitle}>Transaction History</Text>
           <TouchableOpacity
@@ -281,6 +350,15 @@ export default function WalletScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* ── Search bar ── */}
+        <SearchBar
+          value={txSearch}
+          onChangeText={setTxSearch}
+          placeholder="Search by description, amount, date..."
+          style={s.searchBar}
+        />
+
+        {/* ── List ── */}
         {ledgerLoad ? (
           <View style={{ alignItems: 'center', paddingVertical: spacing.xxl }}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -299,57 +377,87 @@ export default function WalletScreen() {
               No transactions found.
             </Text>
           </View>
+        ) : filteredLedger.length === 0 ? (
+          <View style={s.noResult}>
+            <Icon
+              name="search"
+              size={32}
+              color={colors.textMuted}
+              strokeWidth={1.2}
+            />
+            <Text style={s.noResultTxt}>
+              No transactions match "{txSearch}"
+            </Text>
+            <TouchableOpacity
+              onPress={() => setTxSearch('')}
+              style={s.clearBtn}
+            >
+              <Text style={s.clearBtnTxt}>Clear Search</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
-          ledger.map((tx, i) => {
-            const isDebit = String(tx?.transaction_type || tx?.type || '')
-              .toLowerCase()
-              .includes('debit');
-            return (
-              <View key={i} style={s.txCard}>
-                <View style={s.txRow}>
-                  <View
-                    style={[s.txIcon, isDebit ? s.txDebitIcon : s.txCreditIcon]}
-                  >
-                    <Icon
-                      name={isDebit ? 'trending-up' : 'dollar'}
-                      size={16}
-                      color={isDebit ? colors.error : colors.primary}
-                      strokeWidth={2}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.txDesc} numberOfLines={2}>
-                      {tx?.description || tx?.desc || tx?.remarks || '—'}
-                    </Text>
-                    <Text style={s.txTime}>
-                      {tx?.create_time || tx?.created_at || tx?.time || '—'}
-                    </Text>
-                    <Text style={s.txId}>ID: {tx?.id || i + 1}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
-                    <Text
+          <>
+            {txSearch.trim() !== '' && (
+              <Text style={s.resultCount}>
+                {filteredLedger.length} result
+                {filteredLedger.length !== 1 ? 's' : ''} found
+              </Text>
+            )}
+
+            {filteredLedger.map((tx, i) => {
+              const isDebit = String(tx?.transaction_type || tx?.type || '')
+                .toLowerCase()
+                .includes('debit');
+              return (
+                <View key={i} style={s.txCard}>
+                  <View style={s.txRow}>
+                    <View
                       style={[
-                        s.txAmount,
-                        { color: isDebit ? colors.error : colors.primary },
+                        s.txIcon,
+                        isDebit ? s.txDebitIcon : s.txCreditIcon,
                       ]}
                     >
-                      {isDebit ? '-' : '+'}
-                      {`${tx?.amount ?? 0} $`}
-                    </Text>
-                    <View style={isDebit ? s.debitBadge : s.creditBadge}>
-                      <Text style={isDebit ? s.debitTxt : s.creditTxt}>
-                        {isDebit ? 'Debit' : 'Credit'}
+                      <Icon
+                        name={isDebit ? 'trending-up' : 'dollar'}
+                        size={16}
+                        color={isDebit ? colors.error : colors.primary}
+                        strokeWidth={2}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.txDesc} numberOfLines={2}>
+                        {tx?.description || tx?.desc || tx?.remarks || '—'}
                       </Text>
+                      <Text style={s.txTime}>
+                        {tx?.create_time || tx?.created_at || tx?.time || '—'}
+                      </Text>
+                      <Text style={s.txId}>ID: {tx?.id || i + 1}</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
+                      <Text
+                        style={[
+                          s.txAmount,
+                          { color: isDebit ? colors.error : colors.primary },
+                        ]}
+                      >
+                        {isDebit ? '-' : '+'}
+                        {`${tx?.amount ?? 0} $`}
+                      </Text>
+                      <View style={isDebit ? s.debitBadge : s.creditBadge}>
+                        <Text style={isDebit ? s.debitTxt : s.creditTxt}>
+                          {isDebit ? 'Debit' : 'Credit'}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 </View>
-              </View>
-            );
-          })
+              );
+            })}
+          </>
         )}
       </ScrollView>
 
-      {/* ── PayU WebView ── */}
+      {/* ── PayU WebView modal ── */}
       <Modal
         visible={showPayment}
         animationType="slide"
@@ -371,9 +479,9 @@ export default function WalletScreen() {
           <WebView
             style={{ flex: 1, backgroundColor: '#fff' }}
             source={{ html: paymentHtml }}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            startInLoadingState={true}
+            javaScriptEnabled
+            domStorageEnabled
+            startInLoadingState
             renderLoading={() => (
               <View style={s.payLoader}>
                 <ActivityIndicator size="large" color={colors.primary} />
@@ -427,9 +535,9 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.bgInput,
+    backgroundColor: colors.inputBg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
     borderRadius: spacing.radius.md,
     paddingHorizontal: spacing.md,
     height: 44,
@@ -448,10 +556,10 @@ const s = StyleSheet.create({
     padding: 0,
   },
   addBtn: {
-    flex: 1,
+    flex: 0.8,
     backgroundColor: colors.primary,
     borderRadius: spacing.radius.md,
-    height: 44,
+    height: 42,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -460,10 +568,14 @@ const s = StyleSheet.create({
     fontWeight: '800',
     color: colors.primaryText,
   },
-  inrTxt: { fontSize: typography.sm, color: colors.primary, fontWeight: '600' },
+  inrTxt: {
+    fontSize: typography.sm,
+    color: colors.primary,
+    fontWeight: '600',
+  },
 
   dropdown: {
-    backgroundColor: colors.bgInput,
+    backgroundColor: colors.inputBg,
     borderWidth: 1,
     borderColor: colors.primary,
     borderRadius: spacing.radius.md,
@@ -477,7 +589,7 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
   },
   dropItemActive: { backgroundColor: 'rgba(74,222,128,0.08)' },
   dropTxt: { fontSize: typography.sm, color: colors.textSecondary },
@@ -499,12 +611,44 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  searchBar: { marginBottom: spacing.md },
+
+  noResult: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxl,
+    gap: spacing.sm,
+  },
+  noResultTxt: {
+    fontSize: typography.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  clearBtn: {
+    marginTop: spacing.sm,
+    backgroundColor: 'rgba(74,222,128,0.1)',
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: spacing.radius.sm,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
+  },
+  clearBtnTxt: {
+    fontSize: typography.sm,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  resultCount: {
+    fontSize: typography.xs,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
+  },
+
   txCard: {
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.card,
     borderRadius: spacing.radius.md,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderLight,
     marginBottom: spacing.sm,
   },
   txRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
@@ -531,7 +675,11 @@ const s = StyleSheet.create({
     color: colors.textPrimary,
     flexWrap: 'wrap',
   },
-  txTime: { fontSize: typography.xs, color: colors.textMuted, marginTop: 2 },
+  txTime: {
+    fontSize: typography.xs,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
   txId: { fontSize: typography.xs, color: colors.textMuted },
   txAmount: { fontSize: typography.base, fontWeight: '700' },
   debitBadge: {
@@ -542,7 +690,11 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
   },
-  debitTxt: { fontSize: typography.xs, fontWeight: '700', color: colors.error },
+  debitTxt: {
+    fontSize: typography.xs,
+    fontWeight: '700',
+    color: colors.error,
+  },
   creditBadge: {
     backgroundColor: 'rgba(74,222,128,0.15)',
     borderWidth: 1,
@@ -563,9 +715,9 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
-    backgroundColor: colors.bgCard,
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.borderLight,
   },
   payBack: {
     width: 40,

@@ -1,3 +1,5 @@
+// src/screens/auth/ForgotPasswordScreen.jsx
+
 import React, { useState } from 'react';
 import {
   View,
@@ -32,60 +34,69 @@ export default function ForgotPasswordScreen({ navigation }) {
     );
   };
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+  const content = (
+    <ScrollView
+      contentContainerStyle={styles.scroll}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      bounces={false}
     >
+      <View style={styles.logoWrap}>
+        <Image
+          source={require('../../assets/algodeltafx_com_horizontal_logo.jpg')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
+
+      <View>
+        <Text style={styles.title}>Set New Password</Text>
+        <Text style={styles.subtitleSub}>
+          Please create new password and verify with OTP.
+        </Text>
+
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          style={[
+            styles.input,
+            focusedInput === 'email' && styles.inputFocused,
+          ]}
+          placeholder="Enter email"
+          placeholderTextColor={colors.textMuted}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          onFocus={() => setFocusedInput('email')}
+          onBlur={() => setFocusedInput(null)}
+        />
+
+        <TouchableOpacity style={styles.btn} onPress={handleSetPassword}>
+          <Text style={styles.btnText}>Set New Password</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.backRow}
+          onPress={() => navigation.navigate('Login')}
+        >
+          <Text style={styles.backText}>← Back to Login</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+
+  return (
+    <View style={styles.flex}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.logoWrap}>
-          <Image
-            source={require('../../assets/algodeltafx_com_horizontal_logo.jpg')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
-
-        <View>
-          <Text style={styles.title}>Set New Password</Text>
-          <Text style={styles.subtitleSub}>
-            Please create new password and verify with OTP.
-          </Text>
-
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={[
-              styles.input,
-              focusedInput === 'email' && styles.inputFocused,
-            ]}
-            placeholder="Enter email"
-            placeholderTextColor={colors.textPlaceholder}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            onBlur={() => setFocusedInput(null)}
-            onFocus={() => setFocusedInput('email')}
-          />
-
-          <TouchableOpacity style={styles.btn} onPress={handleSetPassword}>
-            <Text style={styles.btnText}>Set New Password</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.backRow}
-            onPress={() => navigation.navigate('Login')}
-          >
-            <Text style={styles.backText}>← Back to Login</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      {Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView style={styles.flex} behavior="padding">
+          {content}
+        </KeyboardAvoidingView>
+      ) : (
+        content
+      )}
+    </View>
   );
 }
 
@@ -99,13 +110,6 @@ const styles = StyleSheet.create({
   },
   logoWrap: { alignItems: 'center', marginBottom: spacing.lg },
   logo: { width: 200, height: 60 },
-  card: {
-    backgroundColor: colors.bgCard,
-    borderRadius: spacing.radius.xl,
-    padding: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
   title: {
     fontSize: typography.xl,
     fontWeight: typography.extrabold,
@@ -127,9 +131,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   input: {
-    backgroundColor: colors.bgInput,
+    backgroundColor: colors.inputBg,
     borderWidth: 1,
-    borderColor: colors.bgInputBorder,
+    borderColor: colors.borderLight,
     borderRadius: spacing.radius.md,
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
@@ -139,16 +143,14 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     borderColor: colors.primary,
-    borderWidth: 1.5,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3, // Android
+    borderWidth: 1,
+
+    elevation: 3,
   },
   btn: {
     backgroundColor: colors.primary,
     borderRadius: spacing.radius.md,
-    paddingVertical: spacing.base - 1,
+    paddingVertical: spacing.md,
     alignItems: 'center',
     marginBottom: spacing.base,
   },

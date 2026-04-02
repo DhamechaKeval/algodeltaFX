@@ -1,3 +1,5 @@
+// src/screens/auth/RegisterScreen.jsx
+
 import React, { useState } from 'react';
 import {
   View,
@@ -33,74 +35,83 @@ export default function RegisterScreen({ navigation }) {
     Alert.alert('Sign Up', 'Registration submitted! Please check your email.');
   };
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+  const content = (
+    <ScrollView
+      contentContainerStyle={styles.scroll}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      bounces={false}
     >
-      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.logoWrap}>
-          <Image
-            source={require('../../assets/algodeltafx_com_horizontal_logo.jpg')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
+      <View style={styles.logoWrap}>
+        <Image
+          source={require('../../assets/algodeltafx_com_horizontal_logo.jpg')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
 
-        <View>
-          <Text style={styles.title}>SIGN UP</Text>
-          <Text style={styles.subtitle}>Join AlgodeltaFX Today</Text>
-          <Text style={styles.subtitleSub}>
-            Create your account to get started.
-          </Text>
+      <View>
+        <Text style={styles.title}>SIGN UP</Text>
+        <Text style={styles.subtitle}>Join AlgodeltaFX Today</Text>
+        <Text style={styles.subtitleSub}>
+          Create your account to get started.
+        </Text>
 
-          <Text style={styles.label}>Email address</Text>
-          <TextInput
-            style={[
-              styles.input,
-              focusedInput === 'email' && styles.inputFocused,
-            ]}
-            placeholder="Enter email"
-            placeholderTextColor={colors.textPlaceholder}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            onBlur={() => setFocusedInput(null)}
-            onFocus={() => setFocusedInput('email')}
-          />
+        <Text style={styles.label}>Email address</Text>
+        <TextInput
+          style={[
+            styles.input,
+            focusedInput === 'email' && styles.inputFocused,
+          ]}
+          placeholder="Enter email"
+          placeholderTextColor={colors.textMuted}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          onFocus={() => setFocusedInput('email')}
+          onBlur={() => setFocusedInput(null)}
+        />
 
-          <TouchableOpacity
-            style={styles.termsRow}
-            onPress={() => setAgreed(v => !v)}
-          >
-            <View style={[styles.checkbox, agreed && styles.checkboxChecked]}>
-              {agreed && <Text style={styles.checkmark}>✓</Text>}
-            </View>
-            <Text style={styles.termsText}>
-              I hereby confirm that I have read and agree to the{' '}
-              <Text style={styles.termsLink}>Terms and Conditions.</Text>
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.btn} onPress={handleSignUp}>
-            <Text style={styles.btnText}>Sign Up</Text>
-          </TouchableOpacity>
-
-          <View style={styles.footerRow}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.footerLink}>Sign in instead</Text>
-            </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.termsRow}
+          onPress={() => setAgreed(v => !v)}
+        >
+          <View style={[styles.checkbox, agreed && styles.checkboxChecked]}>
+            {agreed && <Text style={styles.checkmark}>✓</Text>}
           </View>
+          <Text style={styles.termsText}>
+            I hereby confirm that I have read and agree to the{' '}
+            <Text style={styles.termsLink}>Terms and Conditions.</Text>
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.btn} onPress={handleSignUp}>
+          <Text style={styles.btnText}>Sign Up</Text>
+        </TouchableOpacity>
+
+        <View style={styles.footerRow}>
+          <Text style={styles.footerText}>Already have an account? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text style={styles.footerLink}>Sign in instead</Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+    </ScrollView>
+  );
+
+  return (
+    <View style={styles.flex}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
+      {Platform.OS === 'ios' ? (
+        <KeyboardAvoidingView style={styles.flex} behavior="padding">
+          {content}
+        </KeyboardAvoidingView>
+      ) : (
+        content
+      )}
+    </View>
   );
 }
 
@@ -115,7 +126,7 @@ const styles = StyleSheet.create({
   logoWrap: { alignItems: 'center', marginBottom: spacing.xxl },
   logo: { width: 200, height: 60 },
   title: {
-    fontSize: typography.xxl,
+    fontSize: typography.xl,
     fontWeight: typography.extrabold,
     color: colors.textPrimary,
     textAlign: 'center',
@@ -123,7 +134,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   subtitle: {
-    fontSize: typography.base,
+    fontSize: typography.md,
     fontWeight: typography.bold,
     color: colors.textPrimary,
     textAlign: 'center',
@@ -142,9 +153,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   input: {
-    backgroundColor: colors.bgInput,
+    backgroundColor: colors.inputBg,
     borderWidth: 1,
-    borderColor: colors.bgInputBorder,
+    borderColor: colors.borderLight,
     borderRadius: spacing.radius.md,
     paddingHorizontal: spacing.base,
     paddingVertical: spacing.md,
@@ -154,11 +165,8 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     borderColor: colors.primary,
-    borderWidth: 1.5,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3, // Android
+    borderWidth: 1,
+    elevation: 3,
   },
   termsRow: {
     flexDirection: 'row',
@@ -192,11 +200,14 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
   },
-  termsLink: { color: colors.primary, fontWeight: typography.semibold },
+  termsLink: {
+    color: colors.primary,
+    fontWeight: typography.semibold,
+  },
   btn: {
     backgroundColor: colors.primary,
     borderRadius: spacing.radius.md,
-    paddingVertical: spacing.base - 1,
+    paddingVertical: spacing.md,
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
@@ -210,7 +221,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexWrap: 'wrap',
   },
-  footerText: { fontSize: typography.sm + 1, color: colors.textSecondary },
+  footerText: {
+    fontSize: typography.sm + 1,
+    color: colors.textSecondary,
+  },
   footerLink: {
     fontSize: typography.sm + 1,
     color: colors.primary,

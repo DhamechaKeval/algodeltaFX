@@ -65,34 +65,28 @@ export default function GroupOrderCard({ item, index, onView }) {
 
       {/* ── Row 2: SL | TP | Order Form | Filled ── */}
       <View style={s.row}>
-        <StatBox label="SL" value={item?.sl ?? 0} />
-        <StatBox label="TP" value={item?.tp ?? 0} />
-        <StatBox
-          label="Order Form"
-          value={item?.order_form ?? item?.total_orders ?? 0}
-        />
+        <StatBox label="SL" value={(item?.sl).toFixed(2)} />
+        <StatBox label="TP" value={(item?.tp).toFixed(2)} />
+        <StatBox label="Order Form" value={item?.order_from} />
         <StatBox
           label="Filled"
-          value={item?.filled_orders ?? item?.filled ?? 0}
-          green={(item?.filled_orders ?? 0) > 0}
+          value={item?.state_1_count}
+          green={item?.filled_orders > 0}
         />
       </View>
 
       {/* ── Row 3: Place Order | Cancel | Failed ── */}
       <View style={s.row}>
-        <StatBox
-          label="Place Order"
-          value={item?.place_order ?? item?.placed_orders ?? 0}
-        />
+        <StatBox label="Place Order" value={item?.state_2_count} />
         <StatBox
           label="Cancel Order"
-          value={item?.cancel_order ?? item?.cancelled ?? 0}
-          red={(item?.cancel_order ?? 0) > 0}
+          value={item?.state_4_count}
+          red={item?.cancel_order > 0}
         />
         <StatBox
           label="Failed Order"
-          value={item?.failed_order ?? item?.failed ?? 0}
-          red={(item?.failed_order ?? 0) > 0}
+          value={item?.failed_count}
+          red={item?.failed_count > 0}
         />
         <View style={{ flex: 1 }} />
       </View>

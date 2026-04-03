@@ -83,7 +83,19 @@ export const placeGroupOrder = body =>
   post('/users/group/placegrouporder', body);
 export const addChildBroker = (group_id, broker_id) =>
   post('/users/group/addgroupbroker', { group_id, broker_id });
-export const removeChildBroker = (group_id, broker_id) =>
-  post('/users/group/removegroupbroker', { group_id, broker_id });
-export const updateMultiplier = (group_id, broker_id, multiplier) =>
-  post('/users/group/updatemultiplier', { group_id, broker_id, multiplier });
+export const removeChildBroker = group_broker_id =>
+  post('/users/group/removegroupbroker', { group_broker_id });
+export const updateGroupBroker = (group_broker_id, payload) =>
+  post('/users/group/updategroupbroker', { group_broker_id, ...payload });
+// payload: { fix_lot, is_fix_lot, is_balance_based }
+export const refreshChildBroker = broker_id =>
+  post('/users/broker/refreshaccountdata', { broker_id });
+export const getChildPositions = (group_id, broker_id) =>
+  post('/users/group/getgroupbrokerpositions', { group_id, broker_id });
+export const getChildPendingOrders = (group_id, broker_id) =>
+  post('/users/group/getgroupbrokerpendingorders', { group_id, broker_id });
+export const updateChildTrading = (group_broker_id, trading_flag) =>
+  post('/users/group/updatechildtradingflag', {
+    group_broker_id,
+    trading_flag,
+  });

@@ -29,7 +29,6 @@ import {
   disconnectMaster,
   updateGroupTrading,
   addChildBroker,
-  updateMultiplier,
 } from '../../services/copyTradeService';
 
 const parseList = res =>
@@ -454,8 +453,9 @@ export default function GroupDetailScreen({ route, navigation }) {
           renderItem={({ item }) => (
             <ChildAccountCard
               item={item}
-              onToggleTrading={handleChildTrading}
-              onUpdateMultiplier={handleUpdateMultiplier}
+              groupId={groupId}
+              onReload={() => fetchAll(true)}
+              navigation={navigation}
             />
           )}
           contentContainerStyle={{
@@ -492,7 +492,11 @@ export default function GroupDetailScreen({ route, navigation }) {
       {/* ── Modals ── */}
       <ConfirmMasterModal
         visible={showConfirm}
-        brokerName={selectedMaster?.broker_name || ''}
+        brokerName={
+          selectedMaster?.broker_combine_name ||
+          selectedMaster?.broker_name ||
+          ''
+        }
         loading={confirmLoading}
         onConfirm={handleConfirmMaster}
         onCancel={() => {

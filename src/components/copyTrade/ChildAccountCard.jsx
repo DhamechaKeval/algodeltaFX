@@ -1,30 +1,54 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import Icon from '../common/Icon';
 import Badge from '../common/Badge';
 import StatBox from '../common/StatBox';
 import Toggle from '../common/Toggle';
-import Icon from '../common/Icon';
-import { accountStyles } from '../../styles/accounts.styles';
+import MultiplierModal from './MultiplierModal';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import {
+  removeChildBroker,
+  refreshChildBroker,
+  updateChildTrading,
+} from '../../services/copyTradeService';
 
-export default function AccountCard({
+const fmt = v => {
+  if (v === null || v === undefined) return '0';
+  const n = Number(v);
+  if (n >= 1000) return `${(n / 1000).toFixed(4)}K`;
+  return String(v);
+};
+
+export default function ChildAccountCard({
   item,
+  groupId,
+  onReload,
   navigation,
-  onToggleTrading,
-  onToggleSlTp,
-  onToggleAutoRenew,
-  onRefresh,
-  onDelete,
-  onReloadList,
 }) {
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [showReconnect, setShowReconnect] = useState(false);
-  const [showExtend, setShowExtend] = useState(false);
-  const [showKey, setShowKey] = useState(false);
-  const [showDaySlTp, setShowDaySlTp] = useState(false);
-  const [showTooltip, setShowTooltip] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showMult, setShowMult] = useState(false);
+
+  // Local state for multiplier display — updates after save
+  const [multMethod, setMultMethod] = useState(() => {
+    if (item?.is_balance_based) return 'balance_based';
+    if (item?.is_fix_lot) return 'fix_lot';
+    return 'multiplier';
+  });
+  const [multValue, setMultValue] = useState(() => {
+    if (item?.is_balance_based) return item?.multiplier;
+else return String(item?.fix_lot ?? (item?.is_fix_lot ? 0.01 : 1));
+    
+  });
 
   const {
     broker_id,
@@ -32,12 +56,7 @@ export default function AccountCard({
     nic_name,
     is_connected,
     main_trading_flag,
-    is_sl_tp_set,
-    auto_renew,
     end_date,
-    group_involve_count,
-    day_sl = 0,
-    day_tp = 0,
     account_info = {},
   } = item;
 
@@ -56,33 +75,107 @@ export default function AccountCard({
     ? new Date(end_date).toLocaleDateString('en-GB', {
         day: '2-digit',
         month: 'short',
-        year: '2-digit',
+        year: 'numeric',
       })
-    : '—';
+    : item?.expiry ?? '—';
 
-  // ── Trading toggle — confirmation first ───────────────────────
-  const handleTradingPress = () => {
+  const pnl = Number(floating_profit);
+
+  // ── Multiplier label shown in card ──
+  // Shows "1x" for multiplier, "0.01 lot" for fix lot, "Bal" for balance based
+  const multDisplayLabel =
+    multMethod === 'fix_lot'
+      ? `${multValue} lot`
+      : multMethod === 'balance_based'
+      ? `${multValue}`
+      : `${multValue}`;
+
+  // ── Trading toggle ──
+  const handleTrading = () => {
     Alert.alert(
-      'Confirm Trading Status Change',
-      'Are you sure you want to change the trading status for this account?',
+      'Confirm Trading',
+      `${main_trading_flag ? 'Disable' : 'Enable'} trading for this account?`,
       [
         { text: 'No', style: 'cancel' },
         {
           text: 'Yes',
-          onPress: () => onToggleTrading(broker_id, main_trading_flag),
+          onPress: async () => {
+            try {
+              const gbId = item?.group_broker_id ?? item?.id ?? broker_id;
+              await updateChildTrading(gbId, !main_trading_flag);
+              onReload && onReload();
+            } catch (e) {
+              Alert.alert('Error', e?.message || 'Failed.');
+            }
+          },
         },
       ],
     );
   };
 
+  // ── Delete ──
+  const handleDelete = () => {
+    Alert.alert(
+      'Remove Child Account',
+      `Remove "${broker_combine_name || nic_name}" from this group?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              const gbId = item?.group_broker_id ?? item?.id;
+              const res = await removeChildBroker(gbId);
+              if (res?.status === true) {
+                onReload && onReload();
+              } else {
+                Alert.alert('Error', res?.message || 'Failed to remove.');
+              }
+            } catch (e) {
+              Alert.alert('Error', e?.message || 'Network error.');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  // ── Refresh ──
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const res = await refreshChildBroker(broker_id);
+      if (res?.status === true) {
+        onReload && onReload();
+      } else {
+        Alert.alert('Error', res?.message || 'Failed to refresh.');
+      }
+    } catch (e) {
+      Alert.alert('Error', e?.message || 'Network error.');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // ── After multiplier saved ──
+  const handleMultSaved = (method, value) => {
+    setMultMethod(method);
+    setMultValue(String(value));
+    onReload && onReload();
+  };
+
   return (
     <>
-      <View style={accountStyles.card}>
-        {/* Name row */}
-        <View style={accountStyles.nameRow}>
+      <View style={s.card}>
+        {/* ── Name row ── */}
+        <View style={s.nameRow}>
           <View
             style={[
-              accountStyles.dot,
+              s.dot,
               {
                 backgroundColor: is_connected
                   ? colors.primary
@@ -90,81 +183,111 @@ export default function AccountCard({
               },
             ]}
           />
-          <Text style={accountStyles.accountName} numberOfLines={1}>
+          <Text style={s.name} numberOfLines={1}>
             {broker_combine_name || nic_name || 'Account'}
           </Text>
         </View>
 
-        {/* Badges */}
-        <View style={accountStyles.badgeRow}>
-          <Badge
-            label={`${Number(balance).toLocaleString()}-${currency}`}
-            variant="green"
-          />
+        {/* ── Badges ── */}
+        <View style={s.badgeRow}>
+          <Badge label={`${fmt(balance)}-${currency}`} variant="green" />
           <Badge label={`1:${leverage}`} variant="gray" />
         </View>
 
-        {/* Stats row 1 */}
-        <View style={accountStyles.statsRow}>
-          <StatBox label="Equity" value={Number(equity).toFixed(2)} />
+        {/* ── Stats row 1: Equity | POS | Pending | P&L ── */}
+        <View style={s.statsRow}>
+          <StatBox label="Equity" value={fmt(equity)} />
           <StatBox label="POS" value={positions_count} />
           <StatBox label="Pending" value={orders_count} />
           <StatBox
             label="P&L"
             value={Number(floating_profit).toFixed(2)}
-            green={floating_profit > 0}
-            red={floating_profit < 0}
+            green={pnl > 0}
+            red={pnl < 0}
           />
         </View>
 
-        {/* Stats row 2 */}
-        <View style={accountStyles.statsRow}>
+        {/* ── Stats row 2: Expiry | Multiplier(tappable) | Free Margin ── */}
+        <View style={s.statsRow}>
           <StatBox label="Expiry" value={expiryDate} />
-          <StatBox label="Multiplier" value={1} />
-          <StatBox
-            label="Free Margin"
-            value={Number(margin_free).toFixed(2)}
-            flex={2}
-          />
-        </View>
 
-        <View style={accountStyles.divider} />
-        <View style={accountStyles.bottomRow}>
-          <View style={s.togglesRow}>
-            <View style={accountStyles.toggleItem}>
-              <Text style={accountStyles.toggleLabel}>Trading</Text>
-              <Toggle
-                value={!!main_trading_flag}
-                onChange={handleTradingPress}
+          {/* Multiplier — tap to open modal */}
+          <TouchableOpacity
+            style={s.multBox}
+            onPress={() => setShowMult(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={s.multLabel}>
+              {multMethod === 'fix_lot'
+                ? 'Fix Lot'
+                : multMethod === 'balance_based'
+                ? 'Bal Based'
+                : 'Multiplier'}
+            </Text>
+            <View style={s.multValueRow}>
+              <Text style={s.multValue}>{multDisplayLabel}</Text>
+              <Icon
+                name="edit-2"
+                size={10}
+                color={colors.primary}
+                strokeWidth={2}
               />
             </View>
+          </TouchableOpacity>
+
+          <StatBox label="Free Margin" value={fmt(margin_free)} flex={2} />
+        </View>
+
+        {/* ── Divider ── */}
+        <View style={s.divider} />
+
+        {/* ── Footer: Trading toggle + icon buttons ── */}
+        <View style={s.footer}>
+          <View style={s.tradingRow}>
+            <Text style={s.tradingLabel}>Trading</Text>
+            <Toggle value={!!main_trading_flag} onChange={handleTrading} />
           </View>
 
-          <View style={accountStyles.iconGroup}>
+          <View style={s.iconGrp}>
+            {/* Delete */}
             <TouchableOpacity
-              style={[accountStyles.iconBtn, s.iconRed]}
-              onPress={() => onRefresh(broker_id)}
+              style={[s.iconBtn, s.iconRed]}
+              onPress={handleDelete}
+              disabled={deleting}
             >
-              <Icon
-                name="trash"
-                size={15}
-                color={colors.error}
-                strokeWidth={1.8}
-              />
+              {deleting ? (
+                <ActivityIndicator size="small" color={colors.error} />
+              ) : (
+                <Icon
+                  name="trash"
+                  size={15}
+                  color={colors.error}
+                  strokeWidth={1.8}
+                />
+              )}
             </TouchableOpacity>
+
+            {/* Refresh */}
             <TouchableOpacity
-              style={[accountStyles.iconBtn, s.iconPurple]}
-              onPress={() => setMenuVisible(true)}
+              style={[s.iconBtn, s.iconPurple]}
+              onPress={handleRefresh}
+              disabled={refreshing}
             >
-              <Icon
-                name="refresh"
-                size={15}
-                color="#8B5CF6"
-                strokeWidth={1.8}
-              />
+              {refreshing ? (
+                <ActivityIndicator size="small" color="#8B5CF6" />
+              ) : (
+                <Icon
+                  name="refresh"
+                  size={15}
+                  color="#8B5CF6"
+                  strokeWidth={1.8}
+                />
+              )}
             </TouchableOpacity>
+
+            {/* Eye → AccountDetail */}
             <TouchableOpacity
-              style={[accountStyles.iconBtn, accountStyles.iconBtnGreen]}
+              style={[s.iconBtn, s.iconGreen]}
               onPress={() =>
                 navigation?.navigate('AccountDetail', { account: item })
               }
@@ -179,56 +302,107 @@ export default function AccountCard({
           </View>
         </View>
       </View>
+
+      {/* ── Multiplier Modal ── */}
+      <MultiplierModal
+        visible={showMult}
+        item={item}
+        onClose={() => setShowMult(false)}
+        onSaved={handleMultSaved}
+      />
     </>
   );
 }
 
 const s = StyleSheet.create({
-  slTpRow: {
+  card: {
+    backgroundColor: colors.bgCard,
+    borderRadius: 14,
+    padding: 13,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+  },
+
+  // Name
+  nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    marginRight: 5,
+    flexShrink: 0,
+  },
+  name: {
+    fontSize: typography.sm,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    flex: 1,
+  },
+
+  // Badges
+  badgeRow: { flexDirection: 'row', gap: 5, marginBottom: spacing.sm },
+
+  // Stats
+  statsRow: { flexDirection: 'row', gap: 5, marginBottom: spacing.xs },
+
+  // Multiplier box — tappable
+  multBox: {
+    flex: 1,
+    backgroundColor: colors.bgInput,
+    borderRadius: spacing.radius.sm,
+    padding: spacing.xs + 2,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(74,222,128,0.2)',
+  },
+  multLabel: {
+    fontSize: typography.xs,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  multValueRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  multValue: {
+    fontSize: typography.sm,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.sm,
+  },
+
+  // Footer
+  footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
   },
-  slTpValues: { flexDirection: 'row', gap: spacing.xs },
-  slTpChip: {
-    flexDirection: 'row',
+  tradingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  tradingLabel: { fontSize: typography.sm, color: colors.textSecondary },
+  iconGrp: { flexDirection: 'row', gap: 5 },
+  iconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(139,92,246,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(139,92,246,0.25)',
-    borderRadius: spacing.radius.sm,
-    paddingHorizontal: spacing.xs + 2,
-    paddingVertical: 3,
+    justifyContent: 'center',
   },
-  slTpLabel: { fontSize: typography.xs, color: colors.textSecondary },
-  slTpValue: {
-    fontSize: typography.xs,
-    fontWeight: typography.semibold,
-    color: colors.textPrimary,
-  },
-  togglesRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   iconRed: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    backgroundColor: 'rgba(239,68,68,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.3)',
   },
   iconPurple: {
-    backgroundColor: 'rgba(139, 92, 246, 0.12)',
-    borderColor: 'rgba(139, 92, 246, 0.3)',
-  },
-  tooltipWrap: {
-    backgroundColor: '#1a2235',
+    backgroundColor: 'rgba(139,92,246,0.12)',
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
+    borderColor: 'rgba(139,92,246,0.3)',
   },
-  tooltipTxt: {
-    fontSize: 12,
-    color: '#c8d6e8',
-    lineHeight: 18,
-    textAlign: 'center',
+  iconGreen: {
+    backgroundColor: 'rgba(74,222,128,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(74,222,128,0.25)',
   },
 });

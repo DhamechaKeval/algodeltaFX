@@ -28,6 +28,8 @@ import {
   updateGroupTrading,
   squareOffAll,
   cancelAll,
+  getGroupPositions,
+  getGroupPendingOrders,
 } from '../../services/copyTradeService';
 
 const parseList = res =>
@@ -96,7 +98,8 @@ export default function CopyTradeScreen({ navigation }) {
           g.group_id === group.group_id ? { ...g, trading_flag: val } : g,
         ),
       );
-      await updateGroupTrading(group.group_id, val);
+      const res = await updateGroupTrading(group.group_id, val);
+      if (res?.status !== true) fetchGroups(true);
     } catch {
       fetchGroups(true);
     }

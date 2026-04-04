@@ -210,7 +210,7 @@ export default function Icon({
     case 'chevron-up':
       return (
         <Svg {...props}>
-          <Polyline points="15,18 9,12 15,6" />
+          <Polyline points="6,15 12,9 18,15" />
         </Svg>
       );
 

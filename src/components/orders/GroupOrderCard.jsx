@@ -4,6 +4,7 @@ import Icon from '../common/Icon';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import { formatDateTime } from '../../utils/date';
 
 function StatBox({ label, value, green, red }) {
   return (
@@ -92,8 +93,8 @@ export default function GroupOrderCard({ item, index, onView }) {
       </View>
 
       {/* ── Time — small, bottom ── */}
-      {(item?.create_time || item?.created_at) && (
-        <Text style={s.time}>{item?.create_time || item?.created_at}</Text>
+      {item?.create_time && (
+        <Text style={s.time}>{formatDateTime(item?.create_time)}</Text>
       )}
     </View>
   );

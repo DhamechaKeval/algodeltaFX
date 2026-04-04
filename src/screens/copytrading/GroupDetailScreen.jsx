@@ -30,6 +30,7 @@ import {
   updateGroupTrading,
   addChildBroker,
 } from '../../services/copyTradeService';
+import { useAlert } from '../../components/common/AlertContext';
 
 const parseList = res =>
   Array.isArray(res?.data)
@@ -57,6 +58,7 @@ export default function GroupDetailScreen({ route, navigation }) {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [showPlaceOrder, setShowPlaceOrder] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
+  const { showAlert } = useAlert();
 
   const groupId = group?.group_id ?? initialGroup?.group_id;
 
@@ -81,7 +83,7 @@ export default function GroupDetailScreen({ route, navigation }) {
           : [];
         setBrokerNames(bList);
       } catch (e) {
-        Alert.alert('Error', e?.message || 'Failed to load.');
+        showAlert('Error', e?.message || 'Failed to load.');
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -125,16 +127,16 @@ export default function GroupDetailScreen({ route, navigation }) {
         setShowConfirm(false);
         setSelectedMaster(null);
         fetchAll(true);
-      } else Alert.alert('Error', res?.message || 'Failed to connect master.');
+      } else showAlert('Error', res?.message || 'Failed to connect master.');
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.message || 'Network error.');
     } finally {
       setConfirmLoading(false);
     }
   };
 
   const handleDisconnect = () => {
-    Alert.alert('Disconnect Master', 'Are you sure you want to disconnect?', [
+    showAlert('Disconnect Master', 'Are you sure you want to disconnect?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Disconnect',
@@ -142,26 +144,35 @@ export default function GroupDetailScreen({ route, navigation }) {
         onPress: async () => {
           const res = await disconnectMaster(groupId);
           if (res?.status === true) fetchAll(true);
-          else Alert.alert('Error', res?.message || 'Failed.');
+          else showAlert('Error', res?.message || 'Failed.');
         },
       },
     ]);
   };
 
-  const handleGroupTrading = async val => {
-    setGroup(prev => ({ ...prev, trading_flag: val }));
-    try {
-      await updateGroupTrading(groupId, val);
-    } catch {
-      fetchAll(true);
-    }
-  };
+  const handleGroupTrading = val => {
+    showAlert(
+      'Confirm',
+      `${val ? 'Enable' : 'Disable'} trading for this group?`,
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes',
+          onPress: async () => {
+            try {
+              await updateGroupTrading(groupId, val);
 
-  const handleChildTrading = (child, val) => {
-    setChildren(prev =>
-      prev.map(c =>
-        c.broker_id === child.broker_id ? { ...c, trading_flag: val } : c,
-      ),
+              // ✅ update UI after success
+              setGroup(prev => ({ ...prev, trading_flag: val }));
+
+              // ✅ refresh list if needed
+              fetchAll(true);
+            } catch (e) {
+              showAlert('Error', 'Failed to update trading flag');
+            }
+          },
+        },
+      ],
     );
   };
 
@@ -171,22 +182,9 @@ export default function GroupDetailScreen({ route, navigation }) {
       if (res?.status === true) {
         setShowAddChild(false);
         fetchAll(true);
-      } else Alert.alert('Error', res?.message || 'Failed to add child.');
+      } else showAlert('Error', res?.message || 'Failed to add child.');
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
-    }
-  };
-
-  const handleUpdateMultiplier = async (child, val) => {
-    try {
-      await updateMultiplier(groupId, child.broker_id, val);
-      setChildren(prev =>
-        prev.map(c =>
-          c.broker_id === child.broker_id ? { ...c, multiplier: val } : c,
-        ),
-      );
-    } catch (e) {
-      Alert.alert('Error', e?.message || 'Failed.');
+      showAlert('Error', e?.message || 'Network error.');
     }
   };
 
@@ -194,10 +192,10 @@ export default function GroupDetailScreen({ route, navigation }) {
   const existingIds = children.map(c => c.broker_id);
 
   // Group P/C/C/F
-  const gPlaced = group?.placed ?? group?.place_order ?? 0;
-  const gCancelled = group?.cancelled ?? group?.cancel_order ?? 0;
-  const gCompleted = group?.completed ?? group?.filled_orders ?? 0;
-  const gFailed = group?.failed ?? group?.failed_order ?? 0;
+  const gPlaced = group?.pending_count;
+  const gCancelled = group?.canceled_count;
+  const gCompleted = group?.filled_count;
+  const gFailed = group?.failed_count;
 
   const filtered = search.trim()
     ? children.filter(c =>
@@ -216,17 +214,22 @@ export default function GroupDetailScreen({ route, navigation }) {
 
       {/* ── Header bar ── */}
       <View style={s.headerBar}>
-        <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
-          <Icon
-            name="arrow-left"
-            size={14}
-            color={colors.primaryText}
-            strokeWidth={2.5}
-          />
+        <View style={s.grpNameandBack}>
+          <TouchableOpacity
+            style={s.backBtn}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon
+              name="arrow-left"
+              size={16}
+              color={colors.primaryText}
+              strokeWidth={3}
+            />
+          </TouchableOpacity>
           <Text style={s.backTxt} numberOfLines={1}>
             {group?.group_name || `Group #${groupId}`}
           </Text>
-        </TouchableOpacity>
+        </View>
         <TouchableOpacity
           style={s.refreshIconBtn}
           onPress={() => fetchAll(true)}
@@ -255,7 +258,7 @@ export default function GroupDetailScreen({ route, navigation }) {
                 style={s.disconnectBtn}
                 onPress={handleDisconnect}
               >
-                <Text style={s.disconnectTxt}>⛔ Disconnect</Text>
+                <Text style={s.disconnectTxt}>Disconnect</Text>
               </TouchableOpacity>
             </View>
             {/* Trading + P/C/C/F */}
@@ -263,7 +266,7 @@ export default function GroupDetailScreen({ route, navigation }) {
               <View style={s.masterTradingRow}>
                 <Text style={s.masterTradingLabel}>Trading</Text>
                 <Toggle
-                  value={!!group?.trading_flag}
+                  value={!!group?.grp_trading_flag}
                   onChange={handleGroupTrading}
                 />
               </View>
@@ -368,13 +371,13 @@ export default function GroupDetailScreen({ route, navigation }) {
                       onPress={() => handleSelectMaster(b)}
                     >
                       <Icon
-                        name="user"
+                        name="users"
                         size={12}
                         color={colors.textMuted}
                         strokeWidth={1.5}
                       />
                       <Text style={s.dropTxt} numberOfLines={1}>
-                        {b.broker_name}
+                        {b.broker_combine_name}
                       </Text>
                     </TouchableOpacity>
                   ))
@@ -388,26 +391,6 @@ export default function GroupDetailScreen({ route, navigation }) {
       {/* ── Child section header ── */}
       <View style={s.childHdr}>
         <Text style={s.childHdrTxt}>Child Accounts</Text>
-        <View style={s.childHdrBtns}>
-          <TouchableOpacity
-            style={s.addChildBtn}
-            onPress={() => setShowAddChild(true)}
-          >
-            <Icon
-              name="plus"
-              size={12}
-              color={colors.primaryText}
-              strokeWidth={2.5}
-            />
-            <Text style={s.addChildTxt}>Add Child</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={s.placeOutlineBtn}
-            onPress={() => setShowPlaceOrder(true)}
-          >
-            <Text style={s.placeOutlineTxt}>Place Order</Text>
-          </TouchableOpacity>
-        </View>
       </View>
 
       {/* ── Search ── */}
@@ -415,13 +398,13 @@ export default function GroupDetailScreen({ route, navigation }) {
         <View style={[s.searchBox, sFocused && s.searchFocused]}>
           <Icon
             name="search"
-            size={13}
+            size={14}
             color={sFocused ? colors.primary : colors.textMuted}
             strokeWidth={1.8}
           />
           <TextInput
             style={s.searchInput}
-            placeholder="Search..."
+            placeholder="Search groups..."
             placeholderTextColor={colors.textPlaceholder}
             value={search}
             onChangeText={setSearch}
@@ -432,13 +415,32 @@ export default function GroupDetailScreen({ route, navigation }) {
             <TouchableOpacity onPress={() => setSearch('')}>
               <Icon
                 name="x"
-                size={12}
+                size={13}
                 color={colors.textMuted}
                 strokeWidth={2}
               />
             </TouchableOpacity>
           )}
         </View>
+        <TouchableOpacity
+          style={s.addChildBtn}
+          onPress={() => setShowAddChild(true)}
+        >
+          <Icon
+            name="plus"
+            size={15}
+            color={colors.primaryText}
+            strokeWidth={3}
+          />
+          <Text style={s.addChildTxt}>Child</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.placeOutlineBtn, children.length === 0 && { opacity: 0.6 }]}
+          disabled={children.length === 0}
+          onPress={() => setShowPlaceOrder(true)}
+        >
+          <Text style={s.placeOutlineTxt}>Place Order</Text>
+        </TouchableOpacity>
       </View>
 
       {/* ── Child list ── */}
@@ -459,15 +461,15 @@ export default function GroupDetailScreen({ route, navigation }) {
             />
           )}
           contentContainerStyle={{
-            padding: spacing.base,
-            paddingBottom: spacing.xxl,
+            paddingHorizontal: spacing.base,
+            paddingVertical: spacing.sm + 2,
           }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={s.center}>
               <Icon
-                name="user"
-                size={40}
+                name="users"
+                size={34}
                 color={colors.textMuted}
                 strokeWidth={1}
               />
@@ -509,7 +511,7 @@ export default function GroupDetailScreen({ route, navigation }) {
         groupId={groupId}
         onClose={success => {
           setShowPlaceOrder(false);
-          if (success) Alert.alert('Success', 'Order placed successfully!');
+          if (success) showAlert('Success', 'Order placed successfully!');
         }}
       />
       <AddChildModal
@@ -532,20 +534,21 @@ const s = StyleSheet.create({
     paddingVertical: spacing.sm,
     marginBottom: spacing.xs,
   },
-  backBtn: {
+  grpNameandBack: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.sm,
+  },
+  backBtn: {
     backgroundColor: colors.primary,
     borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 8,
   },
   backTxt: {
-    fontSize: typography.xs + 1,
+    fontSize: typography.xl,
     fontWeight: '700',
-    color: colors.primaryText,
-    maxWidth: 160,
+    color: colors.textPrimary,
   },
   refreshIconBtn: {
     width: 32,
@@ -593,6 +596,7 @@ const s = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 9,
     paddingVertical: 4,
+    marginBottom: spacing.sm,
   },
   disconnectTxt: {
     fontSize: typography.xs + 1,
@@ -612,14 +616,16 @@ const s = StyleSheet.create({
   masterTradingLabel: { fontSize: typography.xs, color: colors.textSecondary },
   masterPcfRow: { flexDirection: 'row', gap: 5 },
   pcfStatBox: {
+    flexDirection: 'row',
+    gap: 8,
     borderWidth: 1,
     borderRadius: 6,
-    paddingHorizontal: 7,
+    paddingHorizontal: 10,
     paddingVertical: 3,
     alignItems: 'center',
     minWidth: 34,
   },
-  pcfStatLabel: { fontSize: typography.xs, fontWeight: '600' },
+  pcfStatLabel: { fontSize: typography.md, fontWeight: '600' },
   pcfStatVal: { fontSize: typography.sm, fontWeight: '700' },
 
   // Master dropdown
@@ -638,7 +644,7 @@ const s = StyleSheet.create({
   masterDropList: {
     backgroundColor: colors.bgInput,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.border,
     borderRadius: 8,
     marginTop: 4,
     overflow: 'hidden',
@@ -646,7 +652,7 @@ const s = StyleSheet.create({
   dropItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
     borderBottomWidth: 1,
@@ -683,6 +689,7 @@ const s = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
+    height: 34,
   },
   addChildTxt: {
     fontSize: typography.xs + 1,
@@ -690,31 +697,40 @@ const s = StyleSheet.create({
     color: colors.primaryText,
   },
   placeOutlineBtn: {
-    backgroundColor: 'rgba(74,222,128,0.1)',
+    backgroundColor: colors.primary,
     borderWidth: 1,
-    borderColor: 'rgba(74,222,128,0.3)',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 5,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   placeOutlineTxt: {
-    fontSize: typography.xs + 1,
+    fontSize: typography.sm,
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.primaryText,
   },
 
   // Search
-  searchRow: { paddingHorizontal: spacing.base, marginBottom: spacing.sm },
-  searchBox: {
+  searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 7,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.base,
+    marginBlock: spacing.sm,
+  },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderRadius: spacing.radius.md,
+    paddingHorizontal: spacing.md,
+    height: 36,
   },
   searchFocused: { borderColor: colors.primary },
   searchInput: {

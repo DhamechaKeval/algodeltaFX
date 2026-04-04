@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Modal,
   View,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  Alert,
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
@@ -17,6 +16,7 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { placeOrder } from '../../services/accountService';
 import { apiPost } from '../../services/api';
+import { useAlert } from '../common/AlertContext';
 
 const ORDER_TYPES = [
   { label: 'BUY', value: 0 },
@@ -25,7 +25,14 @@ const ORDER_TYPES = [
   { label: 'SELL LIMIT', value: 3 },
   { label: 'BUY STOP', value: 4 },
   { label: 'SELL STOP', value: 5 },
+  { label: 'BUY STOP LIMIT', value: 6 },
+  { label: 'SELL STOP LIMIT', value: 7 },
 ];
+
+// Which order types need a Price field
+const needsPrice = [2, 3, 4, 5, 6, 7];
+// Which order types need a Stop Limit Price field (in addition to Price)
+const needsStopLimitPrice = [6, 7];
 
 export default function PlaceOrderModal({ visible, onClose, brokerId }) {
   const [symbol, setSymbol] = useState('');
@@ -35,11 +42,17 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
   const [orderType, setOrderType] = useState(0);
   const [showTypes, setShowTypes] = useState(false);
   const [volume, setVolume] = useState('');
+  const [price, setPrice] = useState('');
+  const [stopLimitPrice, setStopLimitPrice] = useState('');
   const [sl, setSl] = useState('');
   const [tp, setTp] = useState('');
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(null);
   const debounceRef = useRef(null);
+  const { showAlert } = useAlert();
+
+  const showPrice = needsPrice.includes(orderType);
+  const showStopLimitPrice = needsStopLimitPrice.includes(orderType);
 
   const doSearch = async query => {
     if (!query.trim()) {
@@ -52,14 +65,13 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
       const res = await apiPost('/symbols/searchsymbol', {
         symbol: query.toLowerCase(),
       });
+      // API returns: { status: true, data: [{ basename: "BTCUSD" }, ...] }
       const raw = Array.isArray(res?.data)
         ? res.data
         : Array.isArray(res)
         ? res
         : [];
-      const list = raw
-        .map(s => (typeof s === 'string' ? s : s?.symbol || s?.name || ''))
-        .filter(Boolean);
+      const list = raw.map(s => s?.basename || '').filter(Boolean);
       setSuggestions(list);
       setShowSuggest(list.length > 0);
     } catch {
@@ -90,15 +102,23 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
 
   const handlePlaceOrder = async () => {
     if (!symbol.trim()) {
-      Alert.alert('Error', 'Symbol is required.');
+      showAlert('Error', 'Symbol is required.');
       return;
     }
     if (!volume.trim()) {
-      Alert.alert('Error', 'Volume is required.');
+      showAlert('Error', 'Volume is required.');
       return;
     }
     if (isNaN(Number(volume)) || Number(volume) <= 0) {
-      Alert.alert('Error', 'Enter a valid volume.');
+      showAlert('Error', 'Enter a valid volume.');
+      return;
+    }
+    if (showPrice && !price.trim()) {
+      showAlert('Error', 'Price is required for this order type.');
+      return;
+    }
+    if (showStopLimitPrice && !stopLimitPrice.trim()) {
+      showAlert('Error', 'Stop Limit Price is required for this order type.');
       return;
     }
     setLoading(true);
@@ -108,18 +128,21 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
         type: orderType,
         volume: Number(volume),
         broker_id: brokerId,
+        ...(showPrice && price.trim() && { price: Number(price) }),
+        ...(showStopLimitPrice &&
+          stopLimitPrice.trim() && { stoplimit: Number(stopLimitPrice) }),
         ...(sl.trim() && { sl: Number(sl) }),
         ...(tp.trim() && { tp: Number(tp) }),
       };
       const res = await placeOrder(body);
       if (res?.status === true) {
-        Alert.alert('Success', 'Order placed successfully!');
+        showAlert('Success', 'Order placed successfully!');
         handleClose();
       } else {
-        Alert.alert('Error', res?.message || 'Failed to place order.');
+        showAlert('Error', res?.message || 'Failed to place order.');
       }
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.message || 'Network error.');
     } finally {
       setLoading(false);
     }
@@ -128,6 +151,8 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
   const handleClose = () => {
     setSymbol('');
     setVolume('');
+    setPrice('');
+    setStopLimitPrice('');
     setSl('');
     setTp('');
     setOrderType(0);
@@ -230,9 +255,30 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
                       s.inputText,
                       { flex: 1, color: colors.textPrimary },
                     ]}
+                    numberOfLines={1}
                   >
                     {selectedType}
                   </Text>
+                  {/* X to clear order type */}
+                  {orderType !== 0 && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setOrderType(0);
+                        setShowTypes(false);
+                        setPrice('');
+                        setStopLimitPrice('');
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Icon
+                        name="x"
+                        size={13}
+                        color={colors.textSecondary}
+                        strokeWidth={2}
+                      />
+                    </TouchableOpacity>
+                  )}
+                  <View style={s.divider} />
                   <Icon
                     name="chevron-down"
                     size={14}
@@ -254,6 +300,9 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
                         onPress={() => {
                           setOrderType(t.value);
                           setShowTypes(false);
+                          // Reset price fields when switching type
+                          setPrice('');
+                          setStopLimitPrice('');
                         }}
                       >
                         <Text
@@ -269,6 +318,7 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
                   </View>
                 )}
               </View>
+
               <View style={s.col}>
                 <Text style={s.label}>Volume *</Text>
                 <View style={iBox('volume')}>
@@ -286,7 +336,68 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
               </View>
             </View>
 
-            {/* SL + TP */}
+            {/* ── Dynamic fields based on order type ── */}
+
+            {/* Row: Price + Stop Limit Price (for BUY/SELL STOP LIMIT) */}
+            {showStopLimitPrice && (
+              <View style={s.row}>
+                <View style={s.col}>
+                  <Text style={s.label}>Price *</Text>
+                  <View style={iBox('price')}>
+                    <TextInput
+                      style={[s.inputText, { flex: 1 }]}
+                      placeholder="Enter Price"
+                      placeholderTextColor={colors.textPlaceholder}
+                      value={price}
+                      onChangeText={setPrice}
+                      keyboardType="decimal-pad"
+                      onFocus={() => setFocused('price')}
+                      onBlur={() => setFocused(null)}
+                    />
+                  </View>
+                </View>
+                <View style={s.col}>
+                  <Text style={s.label}>Stop Limit Price *</Text>
+                  <View style={iBox('stopLimitPrice')}>
+                    <TextInput
+                      style={[s.inputText, { flex: 1 }]}
+                      placeholder="Enter Stop Limit Price"
+                      placeholderTextColor={colors.textPlaceholder}
+                      value={stopLimitPrice}
+                      onChangeText={setStopLimitPrice}
+                      keyboardType="decimal-pad"
+                      onFocus={() => setFocused('stopLimitPrice')}
+                      onBlur={() => setFocused(null)}
+                    />
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {/* Price only (for LIMIT / STOP types, not STOP LIMIT) */}
+            {showPrice && !showStopLimitPrice && (
+              <View style={s.row}>
+                <View style={s.col}>
+                  <Text style={s.label}>Price *</Text>
+                  <View style={iBox('price')}>
+                    <TextInput
+                      style={[s.inputText, { flex: 1 }]}
+                      placeholder="Enter Price"
+                      placeholderTextColor={colors.textPlaceholder}
+                      value={price}
+                      onChangeText={setPrice}
+                      keyboardType="decimal-pad"
+                      onFocus={() => setFocused('price')}
+                      onBlur={() => setFocused(null)}
+                    />
+                  </View>
+                </View>
+                {/* Empty col to keep layout balanced */}
+                <View style={s.col} />
+              </View>
+            )}
+
+            {/* SL + TP — always shown */}
             <View style={s.row}>
               <View style={s.col}>
                 <Text style={s.label}>Stop Loss (SL)</Text>
@@ -386,6 +497,12 @@ const s = StyleSheet.create({
   },
   inputBoxFocused: { borderColor: colors.primary },
   inputText: { fontSize: typography.sm, color: colors.textPrimary },
+  divider: {
+    width: 1,
+    height: 16,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.xs,
+  },
   row: { flexDirection: 'row', gap: spacing.sm },
   col: { flex: 1 },
   dropdown: {

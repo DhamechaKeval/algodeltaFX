@@ -16,6 +16,7 @@ import { colors } from '../../../theme/colors';
 import { typography } from '../../../theme/typography';
 import { spacing } from '../../../theme/spacing';
 import { getGroupOrderHistory } from '../../../services/orderService';
+import { useAlert } from '../../../components/common/AlertContext ';
 
 const TYPE_MAP = {
   0: 'buy',
@@ -54,6 +55,7 @@ export default function GroupOrdersTab({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [sFocused, setSFocused] = useState(false);
+  const { showAlert } = useAlert();
 
   const fetchData = useCallback(async (isRefresh = false) => {
     try {
@@ -62,7 +64,7 @@ export default function GroupOrdersTab({ navigation }) {
       const res = await getGroupOrderHistory(0, 50);
       setOrders(parseList(res));
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Failed to load group orders.');
+      showAlert('Error', e?.message || 'Failed to load group orders.');
     } finally {
       setLoading(false);
       setRefreshing(false);

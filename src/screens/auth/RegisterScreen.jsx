@@ -17,22 +17,24 @@ import {
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import { useAlert } from '../../components/common/AlertContext';
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [focusedInput, setFocusedInput] = useState(null);
+  const { showAlert } = useAlert();
 
   const handleSignUp = () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email address.');
+      showAlert('Error', 'Please enter your email address.');
       return;
     }
     if (!agreed) {
-      Alert.alert('Error', 'Please agree to the Terms and Conditions.');
+      showAlert('Error', 'Please agree to the Terms and Conditions.');
       return;
     }
-    Alert.alert('Sign Up', 'Registration submitted! Please check your email.');
+    showAlert('Sign Up', 'Registration submitted! Please check your email.');
   };
 
   const content = (
@@ -104,13 +106,12 @@ export default function RegisterScreen({ navigation }) {
   return (
     <View style={styles.flex}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-      {Platform.OS === 'ios' ? (
-        <KeyboardAvoidingView style={styles.flex} behavior="padding">
-          {content}
-        </KeyboardAvoidingView>
-      ) : (
-        content
-      )}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {content}
+      </KeyboardAvoidingView>
     </View>
   );
 }

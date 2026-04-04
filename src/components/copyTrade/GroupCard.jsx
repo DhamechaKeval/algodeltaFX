@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import Icon from '../common/Icon';
@@ -17,6 +16,7 @@ import {
   connectMaster,
   disconnectMaster,
 } from '../../services/copyTradeService';
+import { useAlert } from '../common/AlertContext';
 
 export default function GroupCard({
   item,
@@ -30,13 +30,15 @@ export default function GroupCard({
   const [brokers, setBrokers] = useState([]);
   const [bLoading, setBLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const { showAlert } = useAlert();
 
-  const placed = item?.placed ?? item?.place_order ?? 0;
-  const cancelled = item?.cancelled ?? item?.cancel_order ?? 0;
-  const completed = item?.completed ?? item?.filled_orders ?? 0;
-  const failed = item?.failed ?? item?.failed_order ?? 0;
-  const childCount = item?.child_count ?? item?.broker_count ?? 0;
-  const hasMaster = !!(item?.master_broker_name || item?.master_broker_name);
+  const placed = item?.pending_count;
+  const cancelled = item?.canceled_count;
+  const completed = item?.filled_count;
+  const failed = item?.failed_count;
+  const childCount = item?.group_broker_count;
+  const hasMaster = !!(item?.master_broker_name || item?.master_broker_name)
+  const tradingFlag = item?.grp_trading_flag
 
   // ── Load brokers when dropdown opens ──
   useEffect(() => {
@@ -58,7 +60,7 @@ export default function GroupCard({
   // ── Connect master ──
   const handleSelectBroker = broker => {
     setShowDrop(false);
-    Alert.alert(
+    showAlert(
       'Confirm Connect',
       `Connect "${broker.broker_combine_name}" as master account?`,
       [
@@ -72,13 +74,10 @@ export default function GroupCard({
               if (res?.status === true) {
                 onRefresh && onRefresh();
               } else {
-                Alert.alert(
-                  'Error',
-                  res?.message || 'Failed to connect master.',
-                );
+                showAlert('Error', res?.message || 'Failed to connect master.');
               }
             } catch (e) {
-              Alert.alert('Error', e?.message || 'Network error.');
+              showAlert('Error', e?.message || 'Network error.');
             } finally {
               setConnecting(false);
             }
@@ -90,7 +89,7 @@ export default function GroupCard({
 
   // ── Disconnect master ──
   const handleDisconnect = () => {
-    Alert.alert(
+    showAlert(
       'Confirm Disconnect',
       `Disconnect master account from "${item?.group_name}"?`,
       [
@@ -105,10 +104,10 @@ export default function GroupCard({
               if (res?.status === true) {
                 onRefresh && onRefresh();
               } else {
-                Alert.alert('Error', res?.message || 'Failed to disconnect.');
+                showAlert('Error', res?.message || 'Failed to disconnect.');
               }
             } catch (e) {
-              Alert.alert('Error', e?.message || 'Network error.');
+              showAlert('Error', e?.message || 'Network error.');
             } finally {
               setConnecting(false);
             }
@@ -120,14 +119,16 @@ export default function GroupCard({
 
   // ── Trading toggle ──
   const handleTrading = () => {
-    Alert.alert(
+    showAlert(
       'Confirm',
-      `${item?.trading_flag ? 'Disable' : 'Enable'} trading for this group?`,
+      `${
+        tradingFlag ? 'Disable' : 'Enable'
+      } trading for this group?`,
       [
         { text: 'No', style: 'cancel' },
         {
           text: 'Yes',
-          onPress: () => onToggleTrading(item, !item?.trading_flag),
+          onPress: () => onToggleTrading(item, !tradingFlag),
         },
       ],
     );
@@ -284,10 +285,11 @@ export default function GroupCard({
       <View style={s.bottomRow}>
         <View style={s.tradingRow}>
           <Text style={s.tradingLabel}>Trading</Text>
-          <Toggle value={!!item?.trading_flag} onChange={handleTrading} />
+          <Toggle value={!!item?.grp_trading_flag} onChange={handleTrading} />
         </View>
         <TouchableOpacity
-          style={s.placeBtn}
+          style={[s.placeBtn, (!childCount || !hasMaster) && { opacity: 0.5 }]}
+          disabled={!childCount || !hasMaster}
           onPress={() => onPlaceOrder && onPlaceOrder(item)}
         >
           <Text style={s.placeBtnTxt}>Place Order</Text>
@@ -371,7 +373,16 @@ const s = StyleSheet.create({
     fontWeight: '600',
     color: colors.textPrimary,
   },
-  disconnectIcon: { padding: spacing.xs },
+  disconnectIcon: {
+    height: 26,
+    width: 32,
+    borderWidth: 1,
+    borderColor: colors.error,
+    padding: spacing.xs,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   masterSelectRow: {
     flexDirection: 'row',
     alignItems: 'center',

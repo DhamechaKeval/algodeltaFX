@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  Alert,
   Switch,
 } from 'react-native';
 import Icon from '../common/Icon';
@@ -15,6 +14,7 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { setSlTp } from '../../services/accountService';
+import { useAlert } from '../common/AlertContext';
 
 export default function DaySlTpModal({ visible, onClose, item }) {
   const [slEnabled, setSlEnabled] = useState(false);
@@ -23,6 +23,7 @@ export default function DaySlTpModal({ visible, onClose, item }) {
   const [tp, setTp] = useState('');
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(null);
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     if (visible && item) {
@@ -37,11 +38,11 @@ export default function DaySlTpModal({ visible, onClose, item }) {
 
   const handleSubmit = async () => {
     if (slEnabled && !sl.trim()) {
-      Alert.alert('Error', 'Please enter a Stop Loss value.');
+      showAlert('Error', 'Please enter a Stop Loss value.');
       return;
     }
     if (tpEnabled && !tp.trim()) {
-      Alert.alert('Error', 'Please enter a Target Profit value.');
+      showAlert('Error', 'Please enter a Target Profit value.');
       return;
     }
     setLoading(true);
@@ -53,13 +54,13 @@ export default function DaySlTpModal({ visible, onClose, item }) {
         tpEnabled && tp.trim() ? Number(tp) : 0,
       );
       if (res?.status === true) {
-        Alert.alert('Success', 'Day SL & TP updated successfully!');
+        showAlert('Success', 'Day SL & TP updated successfully!');
         onClose(true);
       } else {
-        Alert.alert('Error', res?.message || 'Failed to update.');
+        showAlert('Error', res?.message || 'Failed to update.');
       }
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.message || 'Network error.');
     } finally {
       setLoading(false);
     }

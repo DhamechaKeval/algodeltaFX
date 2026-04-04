@@ -23,6 +23,7 @@ import {
   getGroupOrderHistory,
   getIndividualOrderHistory,
 } from '../../services/orderService';
+import { useAlert } from '../../components/common/AlertContext';
 
 const TABS = ['Group Orders', 'Individual Orders', 'Order Details'];
 
@@ -65,6 +66,7 @@ export default function OrdersScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [sFocused, setSFocused] = useState(false);
+  const { showAlert } = useAlert();
 
   const fetchAll = useCallback(async (isRefresh = false) => {
     try {
@@ -77,7 +79,7 @@ export default function OrdersScreen({ navigation }) {
       setGroupOrders(parseList(gRes));
       setIndivOrders(parseList(iRes));
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Failed to load orders.');
+      showAlert('Error', e?.message || 'Failed to load orders.');
     } finally {
       setLoading(false);
       setRefreshing(false);

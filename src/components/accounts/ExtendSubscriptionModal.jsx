@@ -1,17 +1,11 @@
 import React, { useState } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-} from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Button from '../common/Button';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { extendBroker } from '../../services/accountService';
+import { useAlert } from '../common/AlertContext';
 
 const DURATIONS = [
   { label: 'Free Demo', value: 'free_demo' },
@@ -24,19 +18,20 @@ const DURATIONS = [
 export default function ExtendSubscriptionModal({ visible, onClose, item }) {
   const [duration, setDuration] = useState('free_demo');
   const [loading, setLoading] = useState(false);
+  const { showAlert } = useAlert();
 
   const handleExtend = async () => {
     setLoading(true);
     try {
       const res = await extendBroker(item.broker_id, duration);
       if (res?.status === true) {
-        Alert.alert('Success', 'Subscription extended successfully!');
+        showAlert('Success', 'Subscription extended successfully!');
         onClose(true);
       } else {
-        Alert.alert('Error', res?.message || 'Failed to extend subscription.');
+        showAlert('Error', res?.message || 'Failed to extend subscription.');
       }
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.message || 'Network error.');
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import { formatDateTime } from '../../utils/date';
 
 function StatBox({ label, value, green, red }) {
   return (
@@ -74,9 +75,9 @@ export default function OrderDetailCard({ item, index }) {
       </View>
 
       {/* ── Time — small, bottom right ── */}
-      {(item?.create_time || item?.created_at || item?.time) && (
+      {item?.create_time && (
         <Text style={s.time}>
-          {item?.create_time || item?.created_at || item?.time}
+          {item?.create_time ? formatDateTime(item?.create_time) : '—'}
         </Text>
       )}
     </View>

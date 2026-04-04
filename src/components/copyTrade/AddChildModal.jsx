@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  FlatList,
   StyleSheet,
   ActivityIndicator,
   TextInput,
@@ -152,28 +151,6 @@ export default function AddChildModal({
           {/* Broker dropdown list */}
           {showBrokerDrop && (
             <View style={s.dropList}>
-              <View
-                style={[
-                  s.dropSearch,
-                  sFocused && { borderColor: colors.primary },
-                ]}
-              >
-                <Icon
-                  name="search"
-                  size={12}
-                  color={colors.textMuted}
-                  strokeWidth={1.8}
-                />
-                <TextInput
-                  style={s.dropSearchInput}
-                  placeholder="Search..."
-                  placeholderTextColor={colors.textPlaceholder}
-                  value={search}
-                  onChangeText={setSearch}
-                  onFocus={() => setSFocused(true)}
-                  onBlur={() => setSFocused(false)}
-                />
-              </View>
               {loading ? (
                 <View style={s.dropCenter}>
                   <ActivityIndicator color={colors.primary} />
@@ -333,7 +310,7 @@ const s = StyleSheet.create({
     fontSize: typography.xs + 1,
     color: colors.textSecondary,
     fontWeight: '500',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
   },
   fieldInp: {
     flexDirection: 'row',
@@ -354,9 +331,8 @@ const s = StyleSheet.create({
   dropList: {
     backgroundColor: colors.bgInput,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.textMuted,
     borderRadius: 8,
-    marginTop: -spacing.md,
     marginBottom: spacing.md,
     overflow: 'hidden',
   },
@@ -382,7 +358,7 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.textMuted,
   },
   dropItemActive: { backgroundColor: 'rgba(74,222,128,0.06)' },
   dropTxt: { flex: 1, fontSize: typography.sm, color: colors.textPrimary },
@@ -395,18 +371,28 @@ const s = StyleSheet.create({
   dropCenter: { padding: spacing.md, alignItems: 'center' },
 
   // Pills
-  pills: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.md },
+  pills: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 4,
+  },
   pill: {
     flex: 1,
     paddingVertical: spacing.sm,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
   },
-  pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  pillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
   pillTxt: {
-    fontSize: typography.xs,
+    fontSize: typography.sm,
     fontWeight: '600',
     color: colors.textSecondary,
   },
@@ -419,8 +405,8 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: typography.base,
+    paddingVertical: spacing.sm,
+    fontSize: typography.md,
     fontWeight: '600',
     color: colors.textPrimary,
     marginBottom: spacing.md,

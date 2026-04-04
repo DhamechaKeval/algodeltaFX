@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Switch,
   ScrollView,
-  Alert,
   StyleSheet,
 } from 'react-native';
 import Input from '../common/Input';
@@ -15,6 +14,7 @@ import { accountStyles } from '../../styles/accounts.styles';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import { useAlert } from '../common/AlertContext';
 
 const DURATIONS = [
   { label: 'Free Demo', value: 'free_demo' },
@@ -39,7 +39,7 @@ const INITIAL = {
 export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
   const [form, setForm] = useState(INITIAL);
   const [showDuration, setShowDuration] = useState(false);
-
+  const { showAlert } = useAlert();
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
   const selectedDuration =
@@ -47,19 +47,19 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
 
   const handleAdd = async () => {
     if (!form.fx_login.trim()) {
-      Alert.alert('Error', 'MT5 Id is required.');
+      showAlert('Error', 'MT5 Id is required.');
       return;
     }
     if (!form.fx_password.trim()) {
-      Alert.alert('Error', 'Password is required.');
+      showAlert('Error', 'Password is required.');
       return;
     }
     if (form.tab === 'server' && !form.fx_server.trim()) {
-      Alert.alert('Error', 'Server Name is required.');
+      showAlert('Error', 'Server Name is required.');
       return;
     }
     if (form.tab === 'host' && !form.fx_host.trim()) {
-      Alert.alert('Error', 'Host is required.');
+      showAlert('Error', 'Host is required.');
       return;
     }
 
@@ -82,7 +82,7 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
     if (result?.success) {
       setForm(INITIAL);
     } else {
-      Alert.alert('Failed', result?.message || 'Something went wrong.');
+      showAlert('Failed', result?.message || 'Something went wrong.');
     }
   };
 

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import { formatDateTime } from '../../utils/date';
 
 export default function UserOrderCard({ item, index }) {
   const isBuy =
@@ -10,38 +11,57 @@ export default function UserOrderCard({ item, index }) {
 
   return (
     <View style={s.card}>
-      {/* Row 1: Id + Account Name + Type badge */}
-      <View style={s.row}>
-        <Text style={s.id}>{index + 1}</Text>
+      {/* ── Header: Id + Symbol + Type badge + P&L ── */}
+      <View style={s.headerRow}>
+        <Text style={s.idTxt}>{index + 1}</Text>
         <View style={{ flex: 1 }}>
-          <Text style={s.accountName} numberOfLines={1}>
-            {item?.account_name || item?.nic_name || item?.broker_name || '—'}
-          </Text>
+          <Text style={s.symbol}>{item?.symbol || '—'}</Text>
+          <Text style={s.ticket}>{item?.broker_combine_name || ''}</Text>
           <Text style={s.ticket}>
             #{item?.ticket || item?.order_id || item?.id || '—'}
           </Text>
         </View>
-        <View style={isBuy ? s.buy : s.sell}>
-          <Text style={isBuy ? s.buyTxt : s.sellTxt}>
-            {isBuy ? 'BUY' : 'SELL'}
-          </Text>
+        <View style={{ alignItems: 'flex-end', gap: 3 }}>
+          <View style={isBuy ? s.buy : s.sell}>
+            <Text style={isBuy ? s.buyTxt : s.sellTxt}>
+              {isBuy ? 'BUY' : 'SELL'}
+            </Text>
+          </View>
         </View>
       </View>
 
-      {/* Row 2: Symbol | Volume | Price | Stop Limit */}
-      <View style={s.statsRow}>
-        <StatBox label="Symbol" value={item?.symbol} />
+      {/* ── Row 1: Volume | Price | SL | TP ── */}
+      <View style={s.row}>
         <StatBox label="Volume" value={item?.volume} />
         <StatBox label="Price($)" value={item?.price ?? item?.price_open} />
-        <StatBox
-          label="Stop Limit"
-          value={item?.stop_limit_price ?? item?.sl ?? 0}
-        />
+        <StatBox label="SL" value={item?.sl ?? 0} />
+        <StatBox label="TP" value={item?.tp ?? 0} />
       </View>
 
-      {item?.create_time || item?.created_at ? (
-        <Text style={s.time}>{item?.create_time || item?.created_at}</Text>
-      ) : null}
+      {/* ── Row 2: Stop Limit | Account | Group ── */}
+      <View style={s.row}>
+        <StatBox
+          label="Stop Limit($)"
+          value={item?.stop_limit_price ?? item?.stop_limit ?? 0}
+        />
+        <StatBox
+          label="State"
+          value={
+            <Text style={item?.is_failed ? s.failedTxt : s.filledTxt}>
+              {item?.is_failed ? 'FAILED' : 'FILLED'}
+            </Text>
+          }
+        />
+        <StatBox label="Order From" value={item?.order_from} />
+        <View style={{ flex: 1 }} />
+      </View>
+
+      {/* ── Time — small, bottom right ── */}
+      {item?.create_time && (
+        <Text style={s.time}>
+          {item?.create_time ? formatDateTime(item?.create_time) : '—'}
+        </Text>
+      )}
     </View>
   );
 }
@@ -66,19 +86,19 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: spacing.md,
   },
-  row: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.sm,
   },
-  id: {
+  idTxt: {
     fontSize: typography.xs,
     color: colors.textMuted,
-    width: 20,
+    width: 18,
     textAlign: 'center',
   },
-  accountName: {
+  symbol: {
     fontSize: typography.sm,
     fontWeight: '700',
     color: colors.textPrimary,
@@ -110,7 +130,18 @@ const s = StyleSheet.create({
     fontWeight: '700',
     color: colors.error,
   },
-  statsRow: { flexDirection: 'row', gap: spacing.xs },
+  failedTxt: {
+    fontSize: typography.xs + 1,
+    fontWeight: '700',
+    color: colors.error,
+  },
+  filledTxt: {
+    fontSize: typography.xs + 1,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  pnl: { fontSize: typography.xs + 1, fontWeight: '700' },
+  row: { flexDirection: 'row', gap: spacing.xs, marginBottom: spacing.xs },
   box: {
     flex: 1,
     backgroundColor: colors.bgInput,
@@ -122,6 +153,7 @@ const s = StyleSheet.create({
     fontSize: typography.xs,
     color: colors.textSecondary,
     marginBottom: 2,
+    textAlign: 'center',
   },
   boxVal: {
     fontSize: typography.xs + 1,
@@ -129,8 +161,9 @@ const s = StyleSheet.create({
     color: colors.textPrimary,
   },
   time: {
-    fontSize: typography.xs,
+    fontSize: typography.xs - 1,
     color: colors.textMuted,
     marginTop: spacing.xs,
+    textAlign: 'right',
   },
 });

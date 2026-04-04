@@ -1,12 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Modal,
-  StyleSheet,
-  Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import Badge from '../common/Badge';
 import StatBox from '../common/StatBox';
 import Toggle from '../common/Toggle';
@@ -19,6 +12,7 @@ import { accountStyles } from '../../styles/accounts.styles';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import { useAlert } from '../common/AlertContext';
 
 export default function AccountCard({
   item,
@@ -30,6 +24,7 @@ export default function AccountCard({
   onDelete,
   onReloadList,
 }) {
+  const { showAlert } = useAlert();
   const [menuVisible, setMenuVisible] = useState(false);
   const [showReconnect, setShowReconnect] = useState(false);
   const [showExtend, setShowExtend] = useState(false);
@@ -73,7 +68,7 @@ export default function AccountCard({
 
   // ── Trading toggle — confirmation first ───────────────────────
   const handleTradingPress = () => {
-    Alert.alert(
+    showAlert(
       'Confirm Trading Status Change',
       'Are you sure you want to change the trading status for this account?',
       [
@@ -89,7 +84,7 @@ export default function AccountCard({
   // ── Auto Renew toggle — confirmation first ────────────────────
   const handleAutoRenewPress = () => {
     const action = auto_renew ? 'disable' : 'enable';
-    Alert.alert(
+    showAlert(
       'Confirm Auto Renew',
       `Are you sure you want to ${action} auto renew of this account subscription?`,
       [
@@ -107,7 +102,7 @@ export default function AccountCard({
     if (!is_sl_tp_set) {
       setShowDaySlTp(true);
     } else {
-      Alert.alert(
+      showAlert(
         'Disable Day SL/TP',
         'Are you sure you want to disable Day SL/TP for this account?',
         [
@@ -189,8 +184,16 @@ export default function AccountCard({
         {/* Stats row 1 */}
         <View style={accountStyles.statsRow}>
           <StatBox label="Equity" value={Number(equity).toFixed(2)} />
-          <StatBox label="POS" value={positions_count} />
-          <StatBox label="Pending" value={orders_count} />
+          <StatBox
+            label="POS"
+            value={positions_count}
+            green={positions_count > 0}
+          />
+          <StatBox
+            label="Pending"
+            value={orders_count}
+            orange={orders_count > 0}
+          />
           <StatBox
             label="P&L"
             value={Number(floating_profit).toFixed(2)}

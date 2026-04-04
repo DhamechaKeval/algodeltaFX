@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert } from 'react-native';
 import {
   getAccounts,
   addAccount,
@@ -9,6 +8,7 @@ import {
   setSlTp,
   refreshAccount,
 } from '../services/accountService';
+import { useAlert } from '../components/common/AlertContext';
 
 export const useAccounts = () => {
   const [accounts, setAccounts] = useState([]);
@@ -19,6 +19,7 @@ export const useAccounts = () => {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
+  const { showAlert } = useAlert();
 
   // ── Fetch all ─────────────────────────────────────────────────
   const fetchAccounts = useCallback(async (isRefresh = false) => {
@@ -77,11 +78,11 @@ export const useAccounts = () => {
         const res = await updateTradingFlag(broker_id, next);
         if (res?.status !== true) {
           updateLocal(broker_id, { main_trading_flag: current });
-          Alert.alert('Error', res?.message || 'Failed to update trading.');
+          showAlert('Error', res?.message || 'Failed to update trading.');
         }
       } catch (e) {
         updateLocal(broker_id, { main_trading_flag: current });
-        Alert.alert('Error', e?.message || 'Network error.');
+        showAlert('Error', e?.message || 'Network error.');
       }
     },
     [updateLocal],
@@ -96,11 +97,11 @@ export const useAccounts = () => {
         const res = await setSlTp(broker_id, next);
         if (res?.status !== true) {
           updateLocal(broker_id, { is_sl_tp_set: current });
-          Alert.alert('Error', res?.message || 'Failed to update SL/TP.');
+          showAlert('Error', res?.message || 'Failed to update SL/TP.');
         }
       } catch (e) {
         updateLocal(broker_id, { is_sl_tp_set: current });
-        Alert.alert('Error', e?.message || 'Network error.');
+        showAlert('Error', e?.message || 'Network error.');
       }
     },
     [updateLocal],
@@ -115,7 +116,7 @@ export const useAccounts = () => {
         const res = await updateAutoRenew(broker_id, next);
         if (res?.status !== true) {
           updateLocal(broker_id, { auto_renew: current });
-          Alert.alert('Error', res?.message || 'Failed to update auto renew.');
+          showAlert('Error', res?.message || 'Failed to update auto renew.');
         }
       } catch (e) {
         updateLocal(broker_id, { auto_renew: current });
@@ -131,7 +132,7 @@ export const useAccounts = () => {
         await refreshAccount(broker_id);
         await fetchAccounts(true);
       } catch (e) {
-        Alert.alert('Error', e?.message || 'Failed to refresh account.');
+        showAlert('Error', e?.message || 'Failed to refresh account.');
       }
     },
     [fetchAccounts],
@@ -140,7 +141,7 @@ export const useAccounts = () => {
   // ── Delete ────────────────────────────────────────────────────
   const handleDeleteAccount = useCallback(
     (broker_id, name) => {
-      Alert.alert(
+      showAlert(
         'Delete Account',
         `Are you sure you want to delete "${name}"?`,
         [
@@ -154,10 +155,10 @@ export const useAccounts = () => {
                 if (res?.status === true) {
                   fetchAccounts(true);
                 } else {
-                  Alert.alert('Error', res?.message || 'Failed to delete.');
+                  showAlert('Error', res?.message || 'Failed to delete.');
                 }
               } catch (e) {
-                Alert.alert('Error', e?.message || 'Network error.');
+                showAlert('Error', e?.message || 'Network error.');
               }
             },
           },

@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import Icon from '../common/Icon';
@@ -20,6 +19,7 @@ import {
   refreshChildBroker,
   updateChildTrading,
 } from '../../services/copyTradeService';
+import { useAlert } from '../common/AlertContext';
 
 const fmt = v => {
   if (v === null || v === undefined) return '0';
@@ -37,6 +37,7 @@ export default function ChildAccountCard({
   const [deleting, setDeleting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showMult, setShowMult] = useState(false);
+  const { showAlert } = useAlert();
 
   // Local state for multiplier display — updates after save
   const [multMethod, setMultMethod] = useState(() => {
@@ -45,9 +46,8 @@ export default function ChildAccountCard({
     return 'multiplier';
   });
   const [multValue, setMultValue] = useState(() => {
-    if (item?.is_balance_based) return item?.multiplier;
-else return String(item?.fix_lot ?? (item?.is_fix_lot ? 0.01 : 1));
-    
+    if (item?.is_balance_based) return String(item?.multiplier);
+    else return String(item?.fix_lot ?? (item?.is_fix_lot ? 0.01 : 1));
   });
 
   const {
@@ -55,7 +55,7 @@ else return String(item?.fix_lot ?? (item?.is_fix_lot ? 0.01 : 1));
     broker_combine_name,
     nic_name,
     is_connected,
-    main_trading_flag,
+    grpbr_trading_flag,
     end_date,
     account_info = {},
   } = item;
@@ -92,9 +92,9 @@ else return String(item?.fix_lot ?? (item?.is_fix_lot ? 0.01 : 1));
 
   // ── Trading toggle ──
   const handleTrading = () => {
-    Alert.alert(
+    showAlert(
       'Confirm Trading',
-      `${main_trading_flag ? 'Disable' : 'Enable'} trading for this account?`,
+      `${grpbr_trading_flag ? 'Disable' : 'Enable'} trading for this account?`,
       [
         { text: 'No', style: 'cancel' },
         {
@@ -102,10 +102,10 @@ else return String(item?.fix_lot ?? (item?.is_fix_lot ? 0.01 : 1));
           onPress: async () => {
             try {
               const gbId = item?.group_broker_id ?? item?.id ?? broker_id;
-              await updateChildTrading(gbId, !main_trading_flag);
+              await updateChildTrading(gbId, !grpbr_trading_flag);
               onReload && onReload();
             } catch (e) {
-              Alert.alert('Error', e?.message || 'Failed.');
+              showAlert('Error', e?.message || 'Failed.');
             }
           },
         },
@@ -115,7 +115,7 @@ else return String(item?.fix_lot ?? (item?.is_fix_lot ? 0.01 : 1));
 
   // ── Delete ──
   const handleDelete = () => {
-    Alert.alert(
+    showAlert(
       'Remove Child Account',
       `Remove "${broker_combine_name || nic_name}" from this group?`,
       [
@@ -131,10 +131,10 @@ else return String(item?.fix_lot ?? (item?.is_fix_lot ? 0.01 : 1));
               if (res?.status === true) {
                 onReload && onReload();
               } else {
-                Alert.alert('Error', res?.message || 'Failed to remove.');
+                showAlert('Error', res?.message || 'Failed to remove.');
               }
             } catch (e) {
-              Alert.alert('Error', e?.message || 'Network error.');
+              showAlert('Error', e?.message || 'Network error.');
             } finally {
               setDeleting(false);
             }
@@ -152,10 +152,10 @@ else return String(item?.fix_lot ?? (item?.is_fix_lot ? 0.01 : 1));
       if (res?.status === true) {
         onReload && onReload();
       } else {
-        Alert.alert('Error', res?.message || 'Failed to refresh.');
+        showAlert('Error', res?.message || 'Failed to refresh.');
       }
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.message || 'Network error.');
     } finally {
       setRefreshing(false);
     }
@@ -227,7 +227,7 @@ else return String(item?.fix_lot ?? (item?.is_fix_lot ? 0.01 : 1));
             <View style={s.multValueRow}>
               <Text style={s.multValue}>{multDisplayLabel}</Text>
               <Icon
-                name="edit-2"
+                name="edit"
                 size={10}
                 color={colors.primary}
                 strokeWidth={2}
@@ -235,7 +235,7 @@ else return String(item?.fix_lot ?? (item?.is_fix_lot ? 0.01 : 1));
             </View>
           </TouchableOpacity>
 
-          <StatBox label="Free Margin" value={fmt(margin_free)} flex={2} />
+          <StatBox label="Free Margin" value={fmt(margin_free)} />
         </View>
 
         {/* ── Divider ── */}
@@ -245,7 +245,7 @@ else return String(item?.fix_lot ?? (item?.is_fix_lot ? 0.01 : 1));
         <View style={s.footer}>
           <View style={s.tradingRow}>
             <Text style={s.tradingLabel}>Trading</Text>
-            <Toggle value={!!main_trading_flag} onChange={handleTrading} />
+            <Toggle value={!!grpbr_trading_flag} onChange={handleTrading} />
           </View>
 
           <View style={s.iconGrp}>

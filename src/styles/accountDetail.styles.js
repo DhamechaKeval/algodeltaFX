@@ -63,7 +63,7 @@ export const detailStyles = StyleSheet.create({
   bannerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
     marginTop: spacing.sm,
     justifyContent: 'flex-end',
   },
@@ -71,7 +71,7 @@ export const detailStyles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: spacing.radius.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.sm,
   },
   placeOrderTxt: {
     fontSize: typography.xs + 1,
@@ -139,6 +139,7 @@ export const detailStyles = StyleSheet.create({
     borderRadius: spacing.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs + 1,
+    height: 36,
   },
   exportTxt: {
     fontSize: typography.xs + 1,
@@ -154,6 +155,7 @@ export const detailStyles = StyleSheet.create({
     borderRadius: spacing.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs + 1,
+    height: 36,
   },
   squareOffTxt: {
     fontSize: typography.xs + 1,
@@ -163,18 +165,15 @@ export const detailStyles = StyleSheet.create({
   refreshBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    justifyContent: 'center', 
     borderWidth: 1,
     borderColor: 'rgba(139,92,246,0.4)',
     borderRadius: spacing.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs + 1,
     marginLeft: 'auto',
-  },
-  refreshTxt: {
-    fontSize: typography.xs + 1,
-    color: '#8B5CF6',
-    fontWeight: typography.semibold,
+    height: 36,
+    width: 36,
   },
 
   // ── Position row card ─────────────────────────────────────

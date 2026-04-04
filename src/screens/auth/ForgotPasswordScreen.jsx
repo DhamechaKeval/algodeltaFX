@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
@@ -17,17 +16,19 @@ import {
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import { useAlert } from '../../components/common/AlertContext';
 
 export default function ForgotPasswordScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [focusedInput, setFocusedInput] = useState(null);
+  const { showAlert } = useAlert();
 
   const handleSetPassword = () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email address.');
+      showAlert('Error', 'Please enter your email address.');
       return;
     }
-    Alert.alert(
+    showAlert(
       'Email Sent',
       'If this email is registered, you will receive a password reset OTP shortly.',
       [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
@@ -89,13 +90,12 @@ export default function ForgotPasswordScreen({ navigation }) {
   return (
     <View style={styles.flex}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-      {Platform.OS === 'ios' ? (
-        <KeyboardAvoidingView style={styles.flex} behavior="padding">
-          {content}
-        </KeyboardAvoidingView>
-      ) : (
-        content
-      )}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {content}
+      </KeyboardAvoidingView>
     </View>
   );
 }

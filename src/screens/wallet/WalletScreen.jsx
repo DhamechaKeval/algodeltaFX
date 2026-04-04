@@ -27,6 +27,9 @@ import {
   getInr,
 } from '../../services/walletService';
 import { getUserIdFromToken } from '../../services/profileService';
+import { common } from '../../styles/common.styles';
+import { formatDateTime } from './../../utils/date';
+import { useAlert } from '../../components/common/AlertContext';
 
 const WALLET_COUNTRIES = [
   { label: 'INDIA', value: 'INDIA' },
@@ -83,6 +86,7 @@ export default function WalletScreen() {
   const [paymentHtml, setPaymentHtml] = useState('');
   const [showPayment, setShowPayment] = useState(false);
   const [txSearch, setTxSearch] = useState('');
+  const { showAlert } = useAlert();
 
   const debounceRef = useRef(null);
 
@@ -188,7 +192,7 @@ export default function WalletScreen() {
   // ── Make payment ──────────────────────────────────────────────
   const handleAdd = async () => {
     if (!amount.trim() || isNaN(Number(amount)) || Number(amount) <= 0) {
-      Alert.alert('Error', 'Enter a valid amount.');
+      showAlert('Error', 'Enter a valid amount.');
       return;
     }
     setPaying(true);
@@ -203,15 +207,15 @@ export default function WalletScreen() {
         setAmount('');
         setInrText('');
       } else if (res?.status === true) {
-        Alert.alert('Success', res?.message || 'Payment initiated!');
+        showAlert('Success', res?.message || 'Payment initiated!');
         setAmount('');
         setInrText('');
         fetchLedger(true);
       } else {
-        Alert.alert('Error', res?.message || 'Payment failed.');
+        showAlert('Error', res?.message || 'Payment failed.');
       }
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.message || 'Network error.');
     } finally {
       setPaying(false);
     }
@@ -224,28 +228,12 @@ export default function WalletScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View style={common.screen}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
       <AppHeader />
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{
-          paddingHorizontal: spacing.base,
-          paddingVertical: spacing.sm + 2,
-        }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => fetchLedger(true)}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
-      >
+      <View style={{ paddingHorizontal: spacing.base }}>
         {/* ── Add Amount ── */}
         <View style={s.addSection}>
-          <Text style={s.sectionTitle}>Add Amount</Text>
           <View style={s.addRow}>
             <TouchableOpacity
               style={[s.box, showCountry && s.boxFocused]}
@@ -282,11 +270,10 @@ export default function WalletScreen() {
               {paying ? (
                 <ActivityIndicator size="small" color={colors.primaryText} />
               ) : (
-                <Text style={s.addBtnTxt}>Add</Text>
+                <Text style={s.addBtnTxt}>Add Amount</Text>
               )}
             </TouchableOpacity>
           </View>
-
           {showCountry && (
             <View style={s.dropdown}>
               {WALLET_COUNTRIES.map((c, i) => (
@@ -327,7 +314,6 @@ export default function WalletScreen() {
               ))}
             </View>
           )}
-
           {country.value === 'INDIA' && amount.trim() !== '' && (
             <View style={{ marginTop: spacing.sm, minHeight: 20 }}>
               {inrLoading ? (
@@ -357,7 +343,22 @@ export default function WalletScreen() {
           placeholder="Search by description, amount, date..."
           style={s.searchBar}
         />
-
+      </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: spacing.base,
+          paddingVertical: spacing.sm + 2,
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchLedger(true)}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
         {/* ── List ── */}
         {ledgerLoad ? (
           <View style={{ alignItems: 'center', paddingVertical: spacing.xxl }}>
@@ -429,7 +430,7 @@ export default function WalletScreen() {
                         {tx?.description || tx?.desc || tx?.remarks || '—'}
                       </Text>
                       <Text style={s.txTime}>
-                        {tx?.create_time || tx?.created_at || tx?.time || '—'}
+                        {formatDateTime(tx?.create_time)}
                       </Text>
                       <Text style={s.txId}>ID: {tx?.id || i + 1}</Text>
                     </View>
@@ -499,7 +500,7 @@ export default function WalletScreen() {
                 url.includes('status=completed')
               ) {
                 closePayment();
-                Alert.alert(
+                showAlert(
                   'Payment Successful!',
                   'Your wallet has been topped up.',
                 );
@@ -508,10 +509,7 @@ export default function WalletScreen() {
                 url.includes('status=failure')
               ) {
                 closePayment();
-                Alert.alert(
-                  'Payment Failed',
-                  'Your payment was not completed.',
-                );
+                showAlert('Payment Failed', 'Your payment was not completed.');
               }
             }}
           />
@@ -522,14 +520,19 @@ export default function WalletScreen() {
 }
 
 const s = StyleSheet.create({
-  addSection: { marginBottom: spacing.base },
+  addSection: { marginBottom: spacing.sm },
   sectionTitle: {
     fontSize: typography.base,
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
-  addRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm + 2,
+  },
   box: {
     flex: 1,
     flexDirection: 'row',
@@ -540,7 +543,7 @@ const s = StyleSheet.create({
     borderColor: colors.borderLight,
     borderRadius: spacing.radius.md,
     paddingHorizontal: spacing.md,
-    height: 44,
+    height: 38,
   },
   boxFocused: { borderColor: colors.primary },
   boxTxt: {
@@ -559,7 +562,7 @@ const s = StyleSheet.create({
     flex: 0.8,
     backgroundColor: colors.primary,
     borderRadius: spacing.radius.md,
-    height: 42,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },

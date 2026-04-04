@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import Icon from '../common/Icon';
 import Button from '../common/Button';
@@ -14,6 +13,7 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { modifyOrder } from '../../services/accountService';
+import { useAlert } from '../common/AlertContext';
 
 export default function EditOrderModal({
   visible,
@@ -25,6 +25,7 @@ export default function EditOrderModal({
   const [tp, setTp] = useState('');
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(null);
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     if (visible && position) {
@@ -44,13 +45,13 @@ export default function EditOrderModal({
         tp: tp.trim() ? Number(tp) : 0,
       });
       if (res?.status === true) {
-        Alert.alert('Success', 'Order modified successfully!');
+        showAlert('Success', 'Order modified successfully!');
         onClose(true);
       } else {
-        Alert.alert('Error', res?.message || 'Failed to modify order.');
+        showAlert('Error', res?.message || 'Failed to modify order.');
       }
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.message || 'Network error.');
     } finally {
       setLoading(false);
     }

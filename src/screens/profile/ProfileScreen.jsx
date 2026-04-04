@@ -7,7 +7,6 @@ import {
   TextInput,
   StyleSheet,
   StatusBar,
-  Alert,
   ActivityIndicator,
   Image,
   Modal,
@@ -27,11 +26,13 @@ import {
   getProfilePhotoUrl,
 } from '../../services/profileService';
 import { useAuth } from '../../hooks/useAuth';
+import { useAlert } from '../../components/common/AlertContext';
 
 const AGE_RANGES = ['18-30', '31-40', '41-50', '51-60', '60+'];
 
 export default function ProfileScreen({ navigation }) {
   const { handleLogout } = useAuth();
+  const { showAlert } = useAlert();
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -105,7 +106,7 @@ export default function ProfileScreen({ navigation }) {
       }
       if (url) setPhotoUrl(url);
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Failed to load profile.');
+      showAlert('Error', e?.message || 'Failed to load profile.');
     } finally {
       setLoading(false);
     }
@@ -160,7 +161,7 @@ export default function ProfileScreen({ navigation }) {
   // ── Save ──────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!fullName.trim()) {
-      Alert.alert('Error', 'Full name is required.');
+      showAlert('Error', 'Full name is required.');
       return;
     }
     setSaving(true);
@@ -182,15 +183,15 @@ export default function ProfileScreen({ navigation }) {
       }
       const res = await updateUserProfile(fd);
       if (res?.status === true) {
-        Alert.alert('Success', 'Profile updated successfully!');
+        showAlert('Success', 'Profile updated successfully!');
         setEditing(false);
         setImageFile(null);
         fetchProfile();
       } else {
-        Alert.alert('Error', res?.message || 'Failed to update.');
+        showAlert('Error', res?.message || 'Failed to update.');
       }
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.message || 'Network error.');
     } finally {
       setSaving(false);
     }
@@ -542,7 +543,7 @@ export default function ProfileScreen({ navigation }) {
         <TouchableOpacity
           style={s.logoutBtn}
           onPress={() =>
-            Alert.alert('Logout', 'Are you sure you want to logout?', [
+            showAlert('Logout', 'Are you sure you want to logout?', [
               { text: 'Cancel', style: 'cancel' },
               {
                 text: 'Logout',

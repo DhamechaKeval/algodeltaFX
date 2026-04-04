@@ -9,7 +9,6 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
-  Alert,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
@@ -20,6 +19,7 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import Icon from '../../components/common/Icon';
+import { useAlert } from '../../components/common/AlertContext';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -29,14 +29,15 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [focusedInput, setFocusedInput] = useState(null);
   const { handleLogin } = useAuth();
+  const { showAlert } = useAlert();
 
   const onPressLogin = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email address.');
+      showAlert('Error', 'Please enter your email address.');
       return;
     }
     if (!password.trim()) {
-      Alert.alert('Error', 'Please enter your password.');
+      showAlert('Error', 'Please enter your password.');
       return;
     }
     setLoading(true);
@@ -45,7 +46,7 @@ export default function LoginScreen({ navigation }) {
     if (result.success) {
       navigation.replace('Main');
     } else {
-      Alert.alert('Login Failed', result.message);
+      showAlert('Login Failed', result.message);
     }
   };
 
@@ -54,26 +55,10 @@ export default function LoginScreen({ navigation }) {
     // ✅ Android: wrap in plain View — adjustResize in AndroidManifest handles it
     <View style={styles.flex}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-
-      {Platform.OS === 'ios' ? (
-        <KeyboardAvoidingView style={styles.flex} behavior="padding">
-          <AuthContent
-            email={email}
-            setEmail={setEmail}
-            password={password}
-            setPassword={setPassword}
-            rememberMe={rememberMe}
-            setRememberMe={setRememberMe}
-            showPassword={showPassword}
-            setShowPassword={setShowPassword}
-            loading={loading}
-            focusedInput={focusedInput}
-            setFocusedInput={setFocusedInput}
-            onPressLogin={onPressLogin}
-            navigation={navigation}
-          />
-        </KeyboardAvoidingView>
-      ) : (
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <AuthContent
           email={email}
           setEmail={setEmail}
@@ -89,7 +74,7 @@ export default function LoginScreen({ navigation }) {
           onPressLogin={onPressLogin}
           navigation={navigation}
         />
-      )}
+      </KeyboardAvoidingView>
     </View>
   );
 }

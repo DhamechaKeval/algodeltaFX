@@ -1,8 +1,8 @@
 import React from 'react';
-import {View, Text, StyleSheet} from 'react-native';
-import {colors}     from '../../theme/colors';
-import {typography} from '../../theme/typography';
-import {spacing}    from '../../theme/spacing';
+import { View, Text, StyleSheet } from 'react-native';
+import { colors } from '../../theme/colors';
+import { typography } from '../../theme/typography';
+import { spacing } from '../../theme/spacing';
 
 /**
  * StatBox
@@ -13,17 +13,26 @@ import {spacing}    from '../../theme/spacing';
  *   red      — highlight value in red
  *   flex     — flex value for sizing (default 1)
  */
-export default function StatBox({label, value, green = false, red = false, flex = 1}) {
+export default function StatBox({
+  label,
+  value,
+  green = false,
+  red = false,
+  orange = false,
+  flex = 1,
+}) {
   const valueColor = green
     ? colors.primary
     : red
     ? colors.error
+    : orange
+    ? colors.warning
     : colors.textPrimary;
 
   return (
-    <View style={[styles.box, {flex}]}>
+    <View style={[styles.box, { flex }]}>
       <Text style={styles.label}>{label}</Text>
-      <Text style={[styles.value, {color: valueColor}]}>{value ?? '—'}</Text>
+      <Text style={[styles.value, { color: valueColor }]}>{value ?? '—'}</Text>
     </View>
   );
 }

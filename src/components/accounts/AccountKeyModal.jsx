@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   StyleSheet,
-  Alert,
   Switch,
   Clipboard,
   Linking,
@@ -17,6 +16,7 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { updateCallbackUrl } from '../../services/accountService';
+import { useAlert } from '../common/AlertContext';
 
 const DOC_URL =
   'https://docs.algodeltafx.com/#7319f8b2-f790-4587-a22d-48e9c338cd2d';
@@ -28,6 +28,7 @@ export default function AccountKeyModal({ visible, onClose, item }) {
     item?.broker_callback_url || '',
   );
   const [saving, setSaving] = useState(false);
+  const { showAlert } = useAlert();
 
   const token = item?.broker_token || '';
   const masked =
@@ -35,12 +36,12 @@ export default function AccountKeyModal({ visible, onClose, item }) {
 
   const handleCopy = () => {
     Clipboard.setString(token);
-    Alert.alert('Copied', 'Account key copied to clipboard.');
+    showAlert('Copied', 'Account key copied to clipboard.');
   };
 
   const handleViewDocs = () => {
     Linking.openURL(DOC_URL).catch(() =>
-      Alert.alert('Error', 'Could not open documentation link.'),
+      showAlert('Error', 'Could not open documentation link.'),
     );
   };
 
@@ -51,7 +52,7 @@ export default function AccountKeyModal({ visible, onClose, item }) {
 
   const handleSave = async () => {
     if (callbackOn && !callbackUrl.trim()) {
-      Alert.alert('Error', 'Please enter a callback URL.');
+      showAlert('Error', 'Please enter a callback URL.');
       return;
     }
     setSaving(true);
@@ -59,12 +60,12 @@ export default function AccountKeyModal({ visible, onClose, item }) {
       const url = callbackOn && callbackUrl.trim() ? callbackUrl.trim() : null;
       const res = await updateCallbackUrl(item.broker_id, url);
       if (res?.status === true) {
-        Alert.alert('Success', 'Callback URL updated.');
+        showAlert('Success', 'Callback URL updated.');
       } else {
-        Alert.alert('Error', res?.message || 'Failed to update.');
+        showAlert('Error', res?.message || 'Failed to update.');
       }
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.message || 'Network error.');
     } finally {
       setSaving(false);
     }

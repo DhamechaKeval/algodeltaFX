@@ -12,6 +12,7 @@ import Icon from '../common/Icon';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import { formatDateTime } from './../../utils/date';
 import {
   getChildPositions,
   getChildPendingOrders,
@@ -55,8 +56,8 @@ function OrderRow({ item, index }) {
           </View>
         ))}
       </View>
-      {(item?.create_time || item?.time) && (
-        <Text style={s.rowTime}>{item?.create_time || item?.time}</Text>
+      {item?.create_time && (
+        <Text style={s.rowTime}>{formatDateTime(item?.create_time)}</Text>
       )}
     </View>
   );

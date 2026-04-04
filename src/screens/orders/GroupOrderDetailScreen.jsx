@@ -18,6 +18,8 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { getUserOrders } from '../../services/orderService';
+import { exportToCSV } from '../../utils/exportUtils';
+import { useAlert } from '../../components/common/AlertContext';
 
 export default function GroupOrderDetailScreen({ route, navigation }) {
   const { group } = route.params;
@@ -27,6 +29,7 @@ export default function GroupOrderDetailScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [sFocused, setSFocused] = useState(false);
+  const { showAlert } = useAlert();
 
   const groupId = group?.group_order_id ?? group?.id;
   const groupName = group?.group_name ?? group?.name ?? `Group #${groupId}`;
@@ -50,7 +53,7 @@ export default function GroupOrderDetailScreen({ route, navigation }) {
           : [];
         setOrders(list);
       } catch (e) {
-        Alert.alert('Error', e?.message || 'Failed to load orders.');
+        showAlert('Error', e?.message || 'Failed to load orders.');
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -114,23 +117,15 @@ export default function GroupOrderDetailScreen({ route, navigation }) {
               </Text>
             </View>
           )}
-          <TouchableOpacity
-            style={s.refreshBtn}
-            onPress={() => fetchOrders(true)}
-          >
-            <Icon
-              name="refresh"
-              size={15}
-              color={colors.textSecondary}
-              strokeWidth={1.8}
-            />
-          </TouchableOpacity>
         </View>
       </View>
 
       {/* ── Toolbar ── */}
       <View style={s.toolbar}>
-        <TouchableOpacity style={s.exportBtn}>
+        <TouchableOpacity
+          style={s.exportBtn}
+          onPress={() => exportToCSV(filtered, 'orders')}
+        >
           <Icon
             name="download"
             size={13}
@@ -166,6 +161,17 @@ export default function GroupOrderDetailScreen({ route, navigation }) {
             </TouchableOpacity>
           )}
         </View>
+        <TouchableOpacity
+          style={s.refreshBtn}
+          onPress={() => fetchOrders(true)}
+        >
+          <Icon
+            name="refresh"
+            size={15}
+            color={colors.textSecondary}
+            strokeWidth={1.8}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* ── List ── */}
@@ -216,6 +222,9 @@ export default function GroupOrderDetailScreen({ route, navigation }) {
 
 const s = StyleSheet.create({
   banner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    //alignItems: 'center',
     backgroundColor: colors.bgCard,
     borderRadius: spacing.radius.lg,
     padding: spacing.md,
@@ -229,7 +238,6 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.sm,
   },
   backBtn: {
     width: 32,
@@ -240,7 +248,6 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   bannerName: {
-    flex: 1,
     fontSize: typography.base,
     fontWeight: '700',
     color: colors.textPrimary,
@@ -277,8 +284,8 @@ const s = StyleSheet.create({
   buyTxt: { fontSize: typography.sm, fontWeight: '700', color: colors.primary },
   sellTxt: { fontSize: typography.sm, fontWeight: '700', color: colors.error },
   refreshBtn: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     backgroundColor: colors.bgInput,
     borderWidth: 1,
     borderColor: colors.border,
@@ -292,7 +299,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.base,
-    marginBottom: spacing.sm,
+    marginBlock: spacing.sm,
   },
   exportBtn: {
     flexDirection: 'row',
@@ -303,6 +310,7 @@ const s = StyleSheet.create({
     borderRadius: spacing.radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs + 1,
+    height: 36,
   },
   exportTxt: {
     fontSize: typography.xs + 1,

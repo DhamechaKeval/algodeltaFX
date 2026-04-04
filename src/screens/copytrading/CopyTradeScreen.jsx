@@ -28,9 +28,8 @@ import {
   updateGroupTrading,
   squareOffAll,
   cancelAll,
-  getGroupPositions,
-  getGroupPendingOrders,
 } from '../../services/copyTradeService';
+import { useAlert } from '../../components/common/AlertContext';
 
 const parseList = res =>
   Array.isArray(res?.data)
@@ -53,6 +52,7 @@ export default function CopyTradeScreen({ navigation }) {
   const [showMenu, setShowMenu] = useState(false);
   const [placeOrderGroup, setPlaceOrderGroup] = useState(null);
   const [showPlaceOrder, setShowPlaceOrder] = useState(false);
+  const { showAlert } = useAlert();
 
   const fetchGroups = useCallback(async (isRefresh = false) => {
     try {
@@ -61,7 +61,7 @@ export default function CopyTradeScreen({ navigation }) {
       const res = await getGroups();
       setGroups(parseList(res));
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Failed to load groups.');
+      showAlert('Error', e?.message || 'Failed to load groups.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -83,10 +83,10 @@ export default function CopyTradeScreen({ navigation }) {
         setEditGroup(null);
         fetchGroups(true);
       } else {
-        Alert.alert('Error', res?.message || 'Operation failed.');
+        showAlert('Error', res?.message || 'Operation failed.');
       }
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.message || 'Network error.');
     }
   };
 
@@ -115,7 +115,7 @@ export default function CopyTradeScreen({ navigation }) {
       return;
     }
     if (key === 'delete') {
-      Alert.alert('Delete Group', `Delete "${menuGroup.group_name}"?`, [
+      showAlert('Delete Group', `Delete "${menuGroup.group_name}"?`, [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
@@ -123,20 +123,20 @@ export default function CopyTradeScreen({ navigation }) {
           onPress: async () => {
             const res = await deleteGroup(gid);
             if (res?.status === true) fetchGroups(true);
-            else Alert.alert('Error', res?.message || 'Failed to delete.');
+            else showAlert('Error', res?.message || 'Failed to delete.');
           },
         },
       ]);
       return;
     }
     if (key === 'squareoff') {
-      Alert.alert('Square Off All', 'Square off all positions?', [
+      showAlert('Square Off All', 'Square off all positions?', [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
           onPress: async () => {
             const res = await squareOffAll(gid);
-            Alert.alert(
+            showAlert(
               res?.status === true ? 'Success' : 'Error',
               res?.message || 'Done.',
             );
@@ -146,13 +146,13 @@ export default function CopyTradeScreen({ navigation }) {
       return;
     }
     if (key === 'cancelall') {
-      Alert.alert('Cancel All', 'Cancel all pending orders?', [
+      showAlert('Cancel All', 'Cancel all pending orders?', [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
           onPress: async () => {
             const res = await cancelAll(gid);
-            Alert.alert(
+            showAlert(
               res?.status === true ? 'Success' : 'Error',
               res?.message || 'Done.',
             );
@@ -192,9 +192,8 @@ export default function CopyTradeScreen({ navigation }) {
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
       <AppHeader />
 
-      {/* Title + Create button */}
-      <View style={s.titleRow}>
-        <Text style={s.pageTitle}>Copy Trading</Text>
+      {/* Search */}
+      <View style={s.searchRow}>
         <TouchableOpacity
           style={s.createBtn}
           onPress={() => {
@@ -203,17 +202,13 @@ export default function CopyTradeScreen({ navigation }) {
           }}
         >
           <Icon
-            name="user-plus"
-            size={14}
+            name="users"
+            size={15}
             color={colors.primaryText}
-            strokeWidth={2}
+            strokeWidth={3}
           />
-          <Text style={s.createBtnTxt}>Create Group</Text>
+          <Text style={s.createBtnTxt}>Group</Text>
         </TouchableOpacity>
-      </View>
-
-      {/* Search */}
-      <View style={s.searchRow}>
         <View style={[s.searchBox, sFocused && s.searchFocused]}>
           <Icon
             name="search"
@@ -280,8 +275,8 @@ export default function CopyTradeScreen({ navigation }) {
             />
           )}
           contentContainerStyle={{
-            padding: spacing.base,
-            paddingBottom: spacing.xxl,
+            paddingHorizontal: spacing.base,
+            paddingVertical: spacing.sm + 2,
           }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
@@ -324,7 +319,7 @@ export default function CopyTradeScreen({ navigation }) {
         groupId={placeOrderGroup?.group_id}
         onClose={success => {
           setShowPlaceOrder(false);
-          if (success) Alert.alert('Success', 'Order placed successfully!');
+          if (success) showAlert('Success', 'Order placed successfully!');
         }}
       />
 
@@ -338,19 +333,6 @@ export default function CopyTradeScreen({ navigation }) {
 }
 
 const s = StyleSheet.create({
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.base,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  pageTitle: {
-    fontSize: typography.xl,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
   createBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -359,10 +341,11 @@ const s = StyleSheet.create({
     borderRadius: spacing.radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    height: 34,
   },
   createBtnTxt: {
-    fontSize: typography.sm,
-    fontWeight: '700',
+    fontSize: typography.md,
+    fontWeight: '900',
     color: colors.primaryText,
   },
   searchRow: {
@@ -370,7 +353,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.base,
-    marginBottom: spacing.sm,
+    marginBlock: spacing.sm,
   },
   searchBox: {
     flex: 1,
@@ -382,7 +365,7 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: spacing.radius.md,
     paddingHorizontal: spacing.md,
-    height: 40,
+    height: 36,
   },
   searchFocused: { borderColor: colors.primary },
   searchInput: {
@@ -393,7 +376,7 @@ const s = StyleSheet.create({
   },
   refreshBtn: {
     width: 40,
-    height: 40,
+    height: 36,
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.border,
@@ -405,7 +388,7 @@ const s = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: spacing.xxl * 2,
+    //paddingTop: spacing.xl,
   },
   emptyTxt: {
     color: colors.textSecondary,

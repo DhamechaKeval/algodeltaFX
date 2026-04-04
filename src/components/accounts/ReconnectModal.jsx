@@ -5,7 +5,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import Input from '../common/Input';
@@ -14,14 +13,16 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { reconnectBroker } from '../../services/accountService';
+import { useAlert } from '../common/AlertContext';
 
 export default function ReconnectModal({ visible, onClose, item }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { showAlert } = useAlert();
 
   const handleReconnect = async () => {
     if (!password.trim()) {
-      Alert.alert('Error', 'Password is required.');
+      showAlert('Error', 'Password is required.');
       return;
     }
     setLoading(true);
@@ -32,14 +33,14 @@ export default function ReconnectModal({ visible, onClose, item }) {
         item.is_host_based ?? false,
       );
       if (res?.status === true) {
-        Alert.alert('Success', 'Account reconnected successfully!');
+        showAlert('Success', 'Account reconnected successfully!');
         setPassword('');
         onClose(true);
       } else {
-        Alert.alert('Error', res?.message || 'Failed to reconnect.');
+        showAlert('Error', res?.message || 'Failed to reconnect.');
       }
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.message || 'Network error.');
     } finally {
       setLoading(false);
     }

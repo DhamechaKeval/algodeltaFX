@@ -15,6 +15,7 @@ import { colors } from '../../../theme/colors';
 import { typography } from '../../../theme/typography';
 import { spacing } from '../../../theme/spacing';
 import { getOrdersHistory } from '../../../services/orderService';
+import { useAlert } from '../../../components/common/AlertContext';
 
 const TYPE_MAP = {
   0: 'buy',
@@ -53,6 +54,7 @@ export default function OrderDetailsTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [sFocused, setSFocused] = useState(false);
+  const { showAlert } = useAlert();
 
   const fetchData = useCallback(async (isRefresh = false) => {
     try {
@@ -61,7 +63,7 @@ export default function OrderDetailsTab() {
       const res = await getOrdersHistory(0, 50);
       setOrders(parseList(res));
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Failed to load order details.');
+      showAlert('Error', e?.message || 'Failed to load order details.');
     } finally {
       setLoading(false);
       setRefreshing(false);

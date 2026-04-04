@@ -93,7 +93,6 @@ export default function AccountsScreen({ navigation }) {
     <View style={common.screen}>
       <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
       <AppHeader />
-      {/* Page title row */}
 
       {/* Search + Sort — same height */}
       <View style={s.toolRow}>
@@ -282,7 +281,7 @@ export default function AccountsScreen({ navigation }) {
 }
 
 // ── Fixed height: 42px for both search and sort ───────────────────
-const TOOL_HEIGHT = 42;
+const TOOL_HEIGHT = 36;
 
 const s = StyleSheet.create({
   addBtn: {

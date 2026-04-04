@@ -7,7 +7,6 @@ import {
   TextInput,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   ScrollView,
 } from 'react-native';
 import Icon from '../common/Icon';
@@ -15,6 +14,7 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { updateGroupBroker } from '../../services/copyTradeService';
+import { useAlert } from '../common/AlertContext';
 
 const METHODS = [
   { key: 'multiplier', label: 'Multiplier', default: '1' },
@@ -42,6 +42,7 @@ export default function MultiplierModal({ visible, item, onClose, onSaved }) {
   const [value, setValue] = useState('1');
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     if (!visible) return;
@@ -60,7 +61,7 @@ export default function MultiplierModal({ visible, item, onClose, onSaved }) {
   const handleSave = async () => {
     const gbId = item?.group_broker_id ?? item?.id;
     if (!gbId) {
-      Alert.alert('Error', 'Cannot identify broker record.');
+      showAlert('Error', 'Cannot identify broker record.');
       return;
     }
 
@@ -68,7 +69,7 @@ export default function MultiplierModal({ visible, item, onClose, onSaved }) {
     if (method !== 'balance_based') {
       const numVal = Number(value);
       if (!value.trim() || isNaN(numVal) || numVal <= 0) {
-        Alert.alert('Invalid', 'Please enter a valid value greater than 0.');
+        showAlert('Invalid', 'Please enter a valid value greater than 0.');
         return;
       }
     }
@@ -86,10 +87,10 @@ export default function MultiplierModal({ visible, item, onClose, onSaved }) {
         onSaved && onSaved(method, numVal);
         onClose();
       } else {
-        Alert.alert('Error', res?.message || 'Failed to update.');
+        showAlert('Error', res?.message || 'Failed to update.');
       }
     } catch (e) {
-      Alert.alert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.message || 'Network error.');
     } finally {
       setLoading(false);
     }
@@ -230,18 +231,28 @@ const s = StyleSheet.create({
   },
 
   // Pills
-  pills: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.base },
+  pills: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 4,
+  },
   pill: {
     flex: 1,
     paddingVertical: spacing.sm,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
   },
-  pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  pillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    borderRadius: 12,
+  },
   pillTxt: {
-    fontSize: typography.xs + 1,
+    fontSize: typography.sm,
     fontWeight: '600',
     color: colors.textSecondary,
   },
@@ -249,10 +260,10 @@ const s = StyleSheet.create({
 
   // Input
   inputLabel: {
-    fontSize: typography.xs + 1,
+    fontSize: typography.sm,
+    fontWeight: '600',
     color: colors.textSecondary,
-    fontWeight: '500',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
   },
   input: {
     backgroundColor: colors.bgInput,
@@ -260,28 +271,22 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: typography.base,
+    paddingVertical: spacing.sm,
+    fontSize: typography.md,
     fontWeight: '600',
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   inputFocused: { borderColor: colors.primary },
-  hint: {
-    fontSize: typography.xs,
-    color: colors.textMuted,
-    marginBottom: spacing.base,
-    lineHeight: 16,
-  },
 
-  // Balance based info box
+  // Balance based info
   infoBox: {
     backgroundColor: 'rgba(74,222,128,0.06)',
     borderWidth: 1,
     borderColor: 'rgba(74,222,128,0.2)',
     borderRadius: 12,
     padding: spacing.md,
-    marginBottom: spacing.base,
+    marginBottom: spacing.md,
   },
   infoIconRow: {
     flexDirection: 'row',
@@ -299,7 +304,14 @@ const s = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 20,
   },
+  hint: {
+    fontSize: typography.xs,
+    color: colors.textMuted,
+    marginBottom: spacing.base,
+    lineHeight: 16,
+  },
 
+  // Balance based info box
   // Buttons
   btnRow: { flexDirection: 'row', gap: spacing.sm },
   btnCancel: {

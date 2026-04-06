@@ -15,6 +15,7 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { updateGroupBroker } from '../../services/copyTradeService';
 import { useAlert } from '../common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 const METHODS = [
   { key: 'multiplier', label: 'Multiplier', default: '1' },
@@ -43,6 +44,7 @@ export default function MultiplierModal({ visible, item, onClose, onSaved }) {
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
   useEffect(() => {
     if (!visible) return;
@@ -58,43 +60,44 @@ export default function MultiplierModal({ visible, item, onClose, onSaved }) {
     else setValue(''); // balance_based — no input
   };
 
-  const handleSave = async () => {
-    const gbId = item?.group_broker_id ?? item?.id;
-    if (!gbId) {
-      showAlert('Error', 'Cannot identify broker record.');
-      return;
-    }
-
-    // Validate only for non-balance-based
-    if (method !== 'balance_based') {
-      const numVal = Number(value);
-      if (!value.trim() || isNaN(numVal) || numVal <= 0) {
-        showAlert('Invalid', 'Please enter a valid value greater than 0.');
+  const handleSave = () =>
+    withLock(async () => {
+      const gbId = item?.group_broker_id ?? item?.id;
+      if (!gbId) {
+        showAlert('Error', 'Cannot identify broker record.');
         return;
       }
-    }
 
-    setLoading(true);
-    try {
-      const numVal = method !== 'balance_based' ? Number(value) : 0;
-      const payload = {
-        fix_lot: numVal,
-        is_fix_lot: method === 'fix_lot',
-        is_balance_based: method === 'balance_based',
-      };
-      const res = await updateGroupBroker(gbId, payload);
-      if (res?.status === true) {
-        onSaved && onSaved(method, numVal);
-        onClose();
-      } else {
-        showAlert('Error', res?.message || 'Failed to update.');
+      // Validate only for non-balance-based
+      if (method !== 'balance_based') {
+        const numVal = Number(value);
+        if (!value.trim() || isNaN(numVal) || numVal <= 0) {
+          showAlert('Invalid', 'Please enter a valid value greater than 0.');
+          return;
+        }
       }
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      setLoading(true);
+      try {
+        const numVal = method !== 'balance_based' ? Number(value) : 0;
+        const payload = {
+          fix_lot: numVal,
+          is_fix_lot: method === 'fix_lot',
+          is_balance_based: method === 'balance_based',
+        };
+        const res = await updateGroupBroker(gbId, payload);
+        if (res?.status === true) {
+          onSaved && onSaved(method, numVal);
+          onClose();
+        } else {
+          showAlert('Error', res?.msg || 'Failed to update.');
+        }
+      } catch (e) {
+        showAlert('Error', e?.msg || 'Network error.');
+      } finally {
+        setLoading(false);
+      }
+    });
 
   return (
     <Modal

@@ -90,6 +90,6 @@ export const exportToCSV = async (data, tab) => {
       Alert.alert('Exported!', `Saved to Downloads:\n${filename}`);
     }
   } catch (e) {
-    Alert.alert('Export Failed', e?.message || 'Something went wrong.');
+    Alert.alert('Export Failed', e?.msg || 'Something went wrong.');
   }
 };

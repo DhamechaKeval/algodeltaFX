@@ -79,7 +79,7 @@ export default function OrdersScreen({ navigation }) {
       setGroupOrders(parseList(gRes));
       setIndivOrders(parseList(iRes));
     } catch (e) {
-      showAlert('Error', e?.message || 'Failed to load orders.');
+      showAlert('Error', e?.msg || 'Failed to load orders.');
     } finally {
       setLoading(false);
       setRefreshing(false);

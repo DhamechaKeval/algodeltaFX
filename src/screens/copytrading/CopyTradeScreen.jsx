@@ -30,6 +30,7 @@ import {
   cancelAll,
 } from '../../services/copyTradeService';
 import { useAlert } from '../../components/common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 const parseList = res =>
   Array.isArray(res?.data)
@@ -53,6 +54,7 @@ export default function CopyTradeScreen({ navigation }) {
   const [placeOrderGroup, setPlaceOrderGroup] = useState(null);
   const [showPlaceOrder, setShowPlaceOrder] = useState(false);
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
   const fetchGroups = useCallback(async (isRefresh = false) => {
     try {
@@ -61,7 +63,7 @@ export default function CopyTradeScreen({ navigation }) {
       const res = await getGroups();
       setGroups(parseList(res));
     } catch (e) {
-      showAlert('Error', e?.message || 'Failed to load groups.');
+      showAlert('Error', e?.msg || 'Failed to load groups.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -73,35 +75,54 @@ export default function CopyTradeScreen({ navigation }) {
   }, [fetchGroups]);
 
   // ── Create / Edit ──
-  const handleSubmitGroup = async name => {
-    try {
-      const res = editGroup
-        ? await updateGroup(editGroup.group_id, name)
-        : await addGroup(name);
-      if (res?.status === true) {
-        setShowCreate(false);
-        setEditGroup(null);
-        fetchGroups(true);
-      } else {
-        showAlert('Error', res?.message || 'Operation failed.');
+  const handleSubmitGroup = () =>
+    withLock(async name => {
+      try {
+        const res = editGroup
+          ? await updateGroup(editGroup.group_id, name)
+          : await addGroup(name);
+        if (res?.status === true) {
+          setShowCreate(false);
+          setEditGroup(null);
+          fetchGroups(true);
+        } else {
+          showAlert('Error', res?.msg || 'Operation failed.');
+        }
+      } catch (e) {
+        showAlert('Error', e?.msg || 'Network error.');
       }
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    }
-  };
+    });
 
   // ── Trading toggle ──
   const handleToggleTrading = async (group, val) => {
+    setGroups(prev =>
+      prev.map(g =>
+        g.group_id === group.group_id
+          ? { ...g, grp_trading_flag: val } // ← correct key
+          : g,
+      ),
+    );
     try {
+      const res = await updateGroupTrading(group.group_id, val);
+      if (res?.status !== true) {
+        setGroups(prev =>
+          prev.map(g =>
+            g.group_id === group.group_id
+              ? { ...g, grp_trading_flag: !val } // ← revert correct key
+              : g,
+          ),
+        );
+        showAlert('Error', res?.msg || 'Failed to update trading.');
+      }
+    } catch {
       setGroups(prev =>
         prev.map(g =>
-          g.group_id === group.group_id ? { ...g, trading_flag: val } : g,
+          g.group_id === group.group_id
+            ? { ...g, grp_trading_flag: !val } // ← revert correct key
+            : g,
         ),
       );
-      const res = await updateGroupTrading(group.group_id, val);
-      if (res?.status !== true) fetchGroups(true);
-    } catch {
-      fetchGroups(true);
+      showAlert('Error', 'Network error.');
     }
   };
 
@@ -120,11 +141,12 @@ export default function CopyTradeScreen({ navigation }) {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: async () => {
-            const res = await deleteGroup(gid);
-            if (res?.status === true) fetchGroups(true);
-            else showAlert('Error', res?.message || 'Failed to delete.');
-          },
+          onPress: () =>
+            withLock(async () => {
+              const res = await deleteGroup(gid);
+              if (res?.status === true) fetchGroups(true);
+              else showAlert('Error', res?.msg || 'Failed to delete.');
+            }),
         },
       ]);
       return;
@@ -134,13 +156,14 @@ export default function CopyTradeScreen({ navigation }) {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
-          onPress: async () => {
-            const res = await squareOffAll(gid);
-            showAlert(
-              res?.status === true ? 'Success' : 'Error',
-              res?.message || 'Done.',
-            );
-          },
+          onPress: () =>
+            withLock(async () => {
+              const res = await squareOffAll(gid);
+              showAlert(
+                res?.status === true ? 'Success' : 'Error',
+                res?.msg || 'Done.',
+              );
+            }),
         },
       ]);
       return;
@@ -150,13 +173,14 @@ export default function CopyTradeScreen({ navigation }) {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
-          onPress: async () => {
-            const res = await cancelAll(gid);
-            showAlert(
-              res?.status === true ? 'Success' : 'Error',
-              res?.message || 'Done.',
-            );
-          },
+          onPress: () =>
+            withLock(async () => {
+              const res = await cancelAll(gid);
+              showAlert(
+                res?.status === true ? 'Success' : 'Error',
+                res?.msg || 'Done.',
+              );
+            }),
         },
       ]);
       return;

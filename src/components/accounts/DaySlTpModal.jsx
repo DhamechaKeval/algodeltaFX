@@ -15,6 +15,7 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { setSlTp } from '../../services/accountService';
 import { useAlert } from '../common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 export default function DaySlTpModal({ visible, onClose, item }) {
   const [slEnabled, setSlEnabled] = useState(false);
@@ -24,6 +25,7 @@ export default function DaySlTpModal({ visible, onClose, item }) {
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(null);
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
   useEffect(() => {
     if (visible && item) {
@@ -36,34 +38,36 @@ export default function DaySlTpModal({ visible, onClose, item }) {
     }
   }, [visible, item]);
 
-  const handleSubmit = async () => {
-    if (slEnabled && !sl.trim()) {
-      showAlert('Error', 'Please enter a Stop Loss value.');
-      return;
-    }
-    if (tpEnabled && !tp.trim()) {
-      showAlert('Error', 'Please enter a Target Profit value.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await setSlTp(
-        item.broker_id,
-        !!(slEnabled || tpEnabled),
-        slEnabled && sl.trim() ? Number(sl) : 0,
-        tpEnabled && tp.trim() ? Number(tp) : 0,
-      );
-      if (res?.status === true) {
-        showAlert('Success', 'Day SL & TP updated successfully!');
-        onClose(true);
-      } else {
-        showAlert('Error', res?.message || 'Failed to update.');
+  const handleSubmit = () => {
+    withLock(async () => {
+      if (slEnabled && !sl.trim()) {
+        showAlert('Error', 'Please enter a Stop Loss value.');
+        return;
       }
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    } finally {
-      setLoading(false);
-    }
+      if (tpEnabled && !tp.trim()) {
+        showAlert('Error', 'Please enter a Target Profit value.');
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await setSlTp(
+          item.broker_id,
+          !!(slEnabled || tpEnabled),
+          slEnabled && sl.trim() ? Number(sl) : 0,
+          tpEnabled && tp.trim() ? Number(tp) : 0,
+        );
+        if (res?.status === true) {
+          showAlert('Success', 'Day SL & TP updated successfully!');
+          onClose(true);
+        } else {
+          showAlert('Error', res?.msg || 'Failed to update.');
+        }
+      } catch (e) {
+        showAlert('Error', e?.msg || 'Network error.');
+      } finally {
+        setLoading(false);
+      }
+    });
   };
 
   const handleClose = () => {

@@ -17,6 +17,7 @@ import {
   disconnectMaster,
 } from '../../services/copyTradeService';
 import { useAlert } from '../common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 export default function GroupCard({
   item,
@@ -31,14 +32,15 @@ export default function GroupCard({
   const [bLoading, setBLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
   const placed = item?.pending_count;
   const cancelled = item?.canceled_count;
   const completed = item?.filled_count;
   const failed = item?.failed_count;
   const childCount = item?.group_broker_count;
-  const hasMaster = !!(item?.master_broker_name || item?.master_broker_name)
-  const tradingFlag = item?.grp_trading_flag
+  const hasMaster = !!(item?.master_broker_name || item?.master_broker_name);
+  const tradingFlag = item?.grp_trading_flag;
 
   // ── Load brokers when dropdown opens ──
   useEffect(() => {
@@ -67,21 +69,25 @@ export default function GroupCard({
         { text: 'No', style: 'cancel' },
         {
           text: 'Yes',
-          onPress: async () => {
-            setConnecting(true);
-            try {
-              const res = await connectMaster(item.group_id, broker.broker_id);
-              if (res?.status === true) {
-                onRefresh && onRefresh();
-              } else {
-                showAlert('Error', res?.message || 'Failed to connect master.');
+          onPress: () =>
+            withLock(async () => {
+              setConnecting(true);
+              try {
+                const res = await connectMaster(
+                  item.group_id,
+                  broker.broker_id,
+                );
+                if (res?.status === true) {
+                  onRefresh && onRefresh();
+                } else {
+                  showAlert('Error', res?.msg || 'Failed to connect master.');
+                }
+              } catch (e) {
+                showAlert('Error', e?.msg || 'Network error.');
+              } finally {
+                setConnecting(false);
               }
-            } catch (e) {
-              showAlert('Error', e?.message || 'Network error.');
-            } finally {
-              setConnecting(false);
-            }
-          },
+            }),
         },
       ],
     );
@@ -97,21 +103,22 @@ export default function GroupCard({
         {
           text: 'Yes',
           style: 'destructive',
-          onPress: async () => {
-            setConnecting(true);
-            try {
-              const res = await disconnectMaster(item.group_id);
-              if (res?.status === true) {
-                onRefresh && onRefresh();
-              } else {
-                showAlert('Error', res?.message || 'Failed to disconnect.');
+          onPress: () =>
+            withLock(async () => {
+              setConnecting(true);
+              try {
+                const res = await disconnectMaster(item.group_id);
+                if (res?.status === true) {
+                  onRefresh && onRefresh();
+                } else {
+                  showAlert('Error', res?.msg || 'Failed to disconnect.');
+                }
+              } catch (e) {
+                showAlert('Error', e?.msg || 'Network error.');
+              } finally {
+                setConnecting(false);
               }
-            } catch (e) {
-              showAlert('Error', e?.message || 'Network error.');
-            } finally {
-              setConnecting(false);
-            }
-          },
+            }),
         },
       ],
     );
@@ -121,9 +128,7 @@ export default function GroupCard({
   const handleTrading = () => {
     showAlert(
       'Confirm',
-      `${
-        tradingFlag ? 'Disable' : 'Enable'
-      } trading for this group?`,
+      `${tradingFlag ? 'Disable' : 'Enable'} trading for this group?`,
       [
         { text: 'No', style: 'cancel' },
         {

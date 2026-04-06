@@ -20,6 +20,7 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import Icon from '../../components/common/Icon';
 import { useAlert } from '../../components/common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -30,25 +31,27 @@ export default function LoginScreen({ navigation }) {
   const [focusedInput, setFocusedInput] = useState(null);
   const { handleLogin } = useAuth();
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
-  const onPressLogin = async () => {
-    if (!email.trim()) {
-      showAlert('Error', 'Please enter your email address.');
-      return;
-    }
-    if (!password.trim()) {
-      showAlert('Error', 'Please enter your password.');
-      return;
-    }
-    setLoading(true);
-    const result = await handleLogin(email, password);
-    setLoading(false);
-    if (result.success) {
-      navigation.replace('Main');
-    } else {
-      showAlert('Login Failed', result.message);
-    }
-  };
+  const onPressLogin = () =>
+    withLock(async () => {
+      if (!email.trim()) {
+        showAlert('Error', 'Please enter your email address.');
+        return;
+      }
+      if (!password.trim()) {
+        showAlert('Error', 'Please enter your password.');
+        return;
+      }
+      setLoading(true);
+      const result = await handleLogin(email, password);
+      setLoading(false);
+      if (result.success) {
+        navigation.replace('Main');
+      } else {
+        showAlert('Login Failed', result.message);
+      }
+    });
 
   return (
     // ✅ iOS: KAV with 'padding' works perfectly

@@ -13,6 +13,7 @@ import GroupOrderDetailScreen from '../screens/orders/GroupOrderDetailScreen';
 import GroupDetailScreen from '../screens/copytrading/GroupDetailScreen';
 import { colors } from '../theme/colors';
 import { setNavigatorRef } from '../services/api';
+import { useLoadingLock } from '../context/LoadingLockContext';
 
 const Stack = createNativeStackNavigator();
 export const navigationRef = createNavigationContainerRef();
@@ -20,21 +21,23 @@ export const navigationRef = createNavigationContainerRef();
 export default function AppNavigator() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { withLock } = useLoadingLock();
 
   useEffect(() => {
     checkToken();
   }, []);
 
-  const checkToken = async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-      setIsLoggedIn(!!token);
-    } catch {
-      setIsLoggedIn(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const checkToken = () =>
+    withLock(async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        setIsLoggedIn(!!token);
+      } catch {
+        setIsLoggedIn(false);
+      } finally {
+        setIsLoading(false);
+      }
+    });
 
   if (isLoading) {
     return (

@@ -29,6 +29,7 @@ import { exportToCSV } from '../../utils/exportUtils';
 import { PositionCard } from './../../components/accounts/PositionCard';
 import { PendingCard } from './../../components/accounts/PendingCard';
 import { useAlert } from '../../components/common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 // ── Main Screen ───────────────────────────────────────────────────
 export default function AccountDetailScreen({ route, navigation }) {
@@ -46,6 +47,7 @@ export default function AccountDetailScreen({ route, navigation }) {
   const [showOrder, setShowOrder] = useState(false);
   const [editPos, setEditPos] = useState(null);
   const [searchFocused, setSearchFocused] = useState(false);
+  const { withLock } = useLoadingLock();
 
   const freeMargin = account_info?.margin_free ?? 0;
   const pnl = account_info?.floating_profit ?? 0;
@@ -74,7 +76,7 @@ export default function AccountDetailScreen({ route, navigation }) {
             : [],
         );
       } catch (e) {
-        showAlert('Error', e?.message || 'Failed to load data.');
+        showAlert('Error', e?.msg || 'Failed to load data.');
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -98,22 +100,23 @@ export default function AccountDetailScreen({ route, navigation }) {
         {
           text: 'Close Position',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              const res = await squareOffSingle(
-                broker_id,
-                pos?.ticket || pos?.id,
-              );
-              if (res?.status === true) {
-                showAlert('Success', 'Position closed.');
-                fetchData(true);
-              } else {
-                showAlert('Error', res?.message || 'Failed.');
+          onPress: () =>
+            withLock(async () => {
+              try {
+                const res = await squareOffSingle(
+                  broker_id,
+                  pos?.ticket || pos?.id,
+                );
+                if (res?.status === true) {
+                  showAlert('Success', 'Position closed.');
+                  fetchData(true);
+                } else {
+                  showAlert('Error', res?.msg || 'Failed.');
+                }
+              } catch (e) {
+                showAlert('Error', e?.msg || 'Network error.');
               }
-            } catch (e) {
-              showAlert('Error', e?.message || 'Network error.');
-            }
-          },
+            }),
         },
       ],
     );
@@ -128,19 +131,20 @@ export default function AccountDetailScreen({ route, navigation }) {
         {
           text: 'Yes',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              const res = await squareOffAll(broker_id);
-              if (res?.status === true) {
-                showAlert('Success', 'All positions squared off.');
-                fetchData(true);
-              } else {
-                showAlert('Error', res?.message || 'Failed.');
+          onPress: () =>
+            withLock(async () => {
+              try {
+                const res = await squareOffAll(broker_id);
+                if (res?.status === true) {
+                  showAlert('Success', 'All positions squared off.');
+                  fetchData(true);
+                } else {
+                  showAlert('Error', res?.msg || 'Failed.');
+                }
+              } catch (e) {
+                showAlert('Error', e?.msg || 'Network error.');
               }
-            } catch (e) {
-              showAlert('Error', e?.message || 'Network error.');
-            }
-          },
+            }),
         },
       ],
     );
@@ -205,29 +209,15 @@ export default function AccountDetailScreen({ route, navigation }) {
               <Text style={detailStyles.placeOrderTxt}>Place Order</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[
-                detailStyles.actionIconBtn,
-                detailStyles.actionIconBtnGreen,
-              ]}
-            >
-              <Text
-                style={{
-                  fontSize: 10,
-                  fontWeight: '800',
-                  color: colors.primary,
-                }}
-              >
-                RS
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
               style={detailStyles.actionIconBtn}
-              onPress={async () => {
-                try {
-                  await refreshAccount(broker_id);
-                } catch {}
-                fetchData(true);
-              }}
+              onPress={() =>
+                withLock(async () => {
+                  try {
+                    await refreshAccount(broker_id);
+                  } catch {}
+                  await fetchData(true);
+                })
+              }
             >
               <Icon
                 name="refresh"
@@ -264,7 +254,7 @@ export default function AccountDetailScreen({ route, navigation }) {
       <View style={detailStyles.toolbar}>
         <TouchableOpacity
           style={detailStyles.exportBtn}
-          onPress={() => exportToCSV(data, tab)}
+          onPress={() => withLock(() => exportToCSV(data, tab))}
         >
           <Icon
             name="download"

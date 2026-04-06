@@ -40,50 +40,53 @@ export default function AddAccountModal({ visible, onClose, onAdd, loading }) {
   const [form, setForm] = useState(INITIAL);
   const [showDuration, setShowDuration] = useState(false);
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
   const set = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
   const selectedDuration =
     DURATIONS.find(d => d.value === form.duration)?.label || 'Select Duration';
 
-  const handleAdd = async () => {
-    if (!form.fx_login.trim()) {
-      showAlert('Error', 'MT5 Id is required.');
-      return;
-    }
-    if (!form.fx_password.trim()) {
-      showAlert('Error', 'Password is required.');
-      return;
-    }
-    if (form.tab === 'server' && !form.fx_server.trim()) {
-      showAlert('Error', 'Server Name is required.');
-      return;
-    }
-    if (form.tab === 'host' && !form.fx_host.trim()) {
-      showAlert('Error', 'Host is required.');
-      return;
-    }
+  const handleAdd = () => {
+    async () => {
+      if (!form.fx_login.trim()) {
+        showAlert('Error', 'MT5 Id is required.');
+        return;
+      }
+      if (!form.fx_password.trim()) {
+        showAlert('Error', 'Password is required.');
+        return;
+      }
+      if (form.tab === 'server' && !form.fx_server.trim()) {
+        showAlert('Error', 'Server Name is required.');
+        return;
+      }
+      if (form.tab === 'host' && !form.fx_host.trim()) {
+        showAlert('Error', 'Host is required.');
+        return;
+      }
 
-    const body = {
-      fx_login: form.fx_login.trim(),
-      fx_password: form.fx_password,
-      nic_name: form.nic_name.trim(),
-      duration: form.duration,
-      auto_renew: form.auto_renew,
-      is_host_based: form.tab === 'host',
-      ...(form.tab === 'server'
-        ? { fx_server: form.fx_server.trim() }
-        : {
-            fx_host: form.fx_host.trim(),
-            fx_port: parseInt(form.fx_port) || 443,
-          }),
+      const body = {
+        fx_login: form.fx_login.trim(),
+        fx_password: form.fx_password,
+        nic_name: form.nic_name.trim(),
+        duration: form.duration,
+        auto_renew: form.auto_renew,
+        is_host_based: form.tab === 'host',
+        ...(form.tab === 'server'
+          ? { fx_server: form.fx_server.trim() }
+          : {
+              fx_host: form.fx_host.trim(),
+              fx_port: parseInt(form.fx_port) || 443,
+            }),
+      };
+
+      const result = await onAdd(body);
+      if (result?.success) {
+        setForm(INITIAL);
+      } else {
+        showAlert('Failed', result?.message || 'Something went wrong.');
+      }
     };
-
-    const result = await onAdd(body);
-    if (result?.success) {
-      setForm(INITIAL);
-    } else {
-      showAlert('Failed', result?.message || 'Something went wrong.');
-    }
   };
 
   const handleClose = () => {

@@ -20,6 +20,7 @@ import {
   updateChildTrading,
 } from '../../services/copyTradeService';
 import { useAlert } from '../common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 const fmt = v => {
   if (v === null || v === undefined) return '0';
@@ -38,6 +39,7 @@ export default function ChildAccountCard({
   const [refreshing, setRefreshing] = useState(false);
   const [showMult, setShowMult] = useState(false);
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
   // Local state for multiplier display — updates after save
   const [multMethod, setMultMethod] = useState(() => {
@@ -99,15 +101,16 @@ export default function ChildAccountCard({
         { text: 'No', style: 'cancel' },
         {
           text: 'Yes',
-          onPress: async () => {
-            try {
-              const gbId = item?.group_broker_id ?? item?.id ?? broker_id;
-              await updateChildTrading(gbId, !grpbr_trading_flag);
-              onReload && onReload();
-            } catch (e) {
-              showAlert('Error', e?.message || 'Failed.');
-            }
-          },
+          onPress: () =>
+            withLock(async () => {
+              try {
+                const gbId = item?.group_broker_id ?? item?.id ?? broker_id;
+                await updateChildTrading(gbId, !grpbr_trading_flag);
+                onReload && onReload();
+              } catch (e) {
+                showAlert('Error', e?.msg || 'Failed.');
+              }
+            }),
         },
       ],
     );
@@ -123,44 +126,46 @@ export default function ChildAccountCard({
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              const gbId = item?.group_broker_id ?? item?.id;
-              const res = await removeChildBroker(gbId);
-              if (res?.status === true) {
-                onReload && onReload();
-              } else {
-                showAlert('Error', res?.message || 'Failed to remove.');
+          onPress: () =>
+            withLock(async () => {
+              setDeleting(true);
+              try {
+                const gbId = item?.group_broker_id ?? item?.id;
+                const res = await removeChildBroker(gbId);
+                if (res?.status === true) {
+                  onReload && onReload();
+                } else {
+                  showAlert('Error', res?.msg || 'Failed to remove.');
+                }
+              } catch (e) {
+                showAlert('Error', e?.msg || 'Network error.');
+              } finally {
+                setDeleting(false);
               }
-            } catch (e) {
-              showAlert('Error', e?.message || 'Network error.');
-            } finally {
-              setDeleting(false);
-            }
-          },
+            }),
         },
       ],
     );
   };
 
   // ── Refresh ──
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      const res = await refreshChildBroker(broker_id);
-      if (res?.status === true) {
-        onReload && onReload();
-      } else {
-        showAlert('Error', res?.message || 'Failed to refresh.');
+  const handleRefresh = () => {
+    withLock(async () => {
+      setRefreshing(true);
+      try {
+        const res = await refreshChildBroker(broker_id);
+        if (res?.status === true) {
+          onReload && onReload();
+        } else {
+          showAlert('Error', res?.msg || 'Failed to refresh.');
+        }
+      } catch (e) {
+        showAlert('Error', e?.msg || 'Network error.');
+      } finally {
+        setRefreshing(false);
       }
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    } finally {
-      setRefreshing(false);
-    }
+    });
   };
-
   // ── After multiplier saved ──
   const handleMultSaved = (method, value) => {
     setMultMethod(method);

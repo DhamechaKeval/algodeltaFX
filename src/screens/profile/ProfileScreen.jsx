@@ -27,12 +27,14 @@ import {
 } from '../../services/profileService';
 import { useAuth } from '../../hooks/useAuth';
 import { useAlert } from '../../components/common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 const AGE_RANGES = ['18-30', '31-40', '41-50', '51-60', '60+'];
 
 export default function ProfileScreen({ navigation }) {
   const { handleLogout } = useAuth();
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -106,7 +108,7 @@ export default function ProfileScreen({ navigation }) {
       }
       if (url) setPhotoUrl(url);
     } catch (e) {
-      showAlert('Error', e?.message || 'Failed to load profile.');
+      showAlert('Error', e?.msg || 'Failed to load profile.');
     } finally {
       setLoading(false);
     }
@@ -159,43 +161,44 @@ export default function ProfileScreen({ navigation }) {
   };
 
   // ── Save ──────────────────────────────────────────────────────
-  const handleSave = async () => {
-    if (!fullName.trim()) {
-      showAlert('Error', 'Full name is required.');
-      return;
-    }
-    setSaving(true);
-    try {
-      const fd = new FormData();
-      fd.append('full_name', fullName.trim());
-      fd.append('state', state.trim());
-      fd.append('city', city.trim());
-      fd.append('age_range', ageRange);
-      fd.append('pincode', pincode.trim());
-      fd.append('mobile_no', mobileNo.trim());
-      fd.append('country', country.trim().toUpperCase());
-      if (imageFile) {
-        fd.append('profile', {
-          uri: imageFile.uri,
-          type: imageFile.type || 'image/jpeg',
-          name: imageFile.fileName || 'profile.jpg',
-        });
+  const handleSave = () =>
+    withLock(async () => {
+      if (!fullName.trim()) {
+        showAlert('Error', 'Full name is required.');
+        return;
       }
-      const res = await updateUserProfile(fd);
-      if (res?.status === true) {
-        showAlert('Success', 'Profile updated successfully!');
-        setEditing(false);
-        setImageFile(null);
-        fetchProfile();
-      } else {
-        showAlert('Error', res?.message || 'Failed to update.');
+      setSaving(true);
+      try {
+        const fd = new FormData();
+        fd.append('full_name', fullName.trim());
+        fd.append('state', state.trim());
+        fd.append('city', city.trim());
+        fd.append('age_range', ageRange);
+        fd.append('pincode', pincode.trim());
+        fd.append('mobile_no', mobileNo.trim());
+        fd.append('country', country.trim().toUpperCase());
+        if (imageFile) {
+          fd.append('profile', {
+            uri: imageFile.uri,
+            type: imageFile.type || 'image/jpeg',
+            name: imageFile.fileName || 'profile.jpg',
+          });
+        }
+        const res = await updateUserProfile(fd);
+        if (res?.status === true) {
+          showAlert('Success', 'Profile updated successfully!');
+          setEditing(false);
+          setImageFile(null);
+          fetchProfile();
+        } else {
+          showAlert('Error', res?.msg || 'Failed to update.');
+        }
+      } catch (e) {
+        showAlert('Error', e?.msg || 'Network error.');
+      } finally {
+        setSaving(false);
       }
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    } finally {
-      setSaving(false);
-    }
-  };
+    });
 
   const handleCancel = () => {
     if (profile) fillForm(profile, countriesList);
@@ -548,7 +551,7 @@ export default function ProfileScreen({ navigation }) {
               {
                 text: 'Logout',
                 style: 'destructive',
-                onPress: () => handleLogout(navigation),
+                onPress: () => withLock(handleLogout(navigation)),
               },
             ])
           }

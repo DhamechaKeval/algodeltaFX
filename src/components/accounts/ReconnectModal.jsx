@@ -14,36 +14,40 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { reconnectBroker } from '../../services/accountService';
 import { useAlert } from '../common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 export default function ReconnectModal({ visible, onClose, item }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
-  const handleReconnect = async () => {
-    if (!password.trim()) {
-      showAlert('Error', 'Password is required.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await reconnectBroker(
-        item.broker_id,
-        password,
-        item.is_host_based ?? false,
-      );
-      if (res?.status === true) {
-        showAlert('Success', 'Account reconnected successfully!');
-        setPassword('');
-        onClose(true);
-      } else {
-        showAlert('Error', res?.message || 'Failed to reconnect.');
+  const handleReconnect = () => {
+    withLock(async () => {
+      if (!password.trim()) {
+        showAlert('Error', 'Password is required.');
+        return;
       }
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    } finally {
-      setLoading(false);
-    }
+      setLoading(true);
+      try {
+        const res = await reconnectBroker(
+          item.broker_id,
+          password,
+          item.is_host_based ?? false,
+        );
+        if (res?.status === true) {
+          showAlert('Success', 'Account reconnected successfully!');
+          setPassword('');
+          onClose(true);
+        } else {
+          showAlert('Error', res?.msg || 'Failed to reconnect.');
+        }
+      } catch (e) {
+        showAlert('Error', e?.msg || 'Network error.');
+      } finally {
+        setLoading(false);
+      }
+    });
   };
 
   const handleClose = () => {

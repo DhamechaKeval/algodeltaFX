@@ -31,6 +31,7 @@ import {
   addChildBroker,
 } from '../../services/copyTradeService';
 import { useAlert } from '../../components/common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 const parseList = res =>
   Array.isArray(res?.data)
@@ -59,8 +60,9 @@ export default function GroupDetailScreen({ route, navigation }) {
   const [showPlaceOrder, setShowPlaceOrder] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
-  const groupId = group?.group_id ?? initialGroup?.group_id;
+  const groupId = group.group_id;
 
   const fetchAll = useCallback(
     async (isRefresh = false) => {
@@ -83,7 +85,7 @@ export default function GroupDetailScreen({ route, navigation }) {
           : [];
         setBrokerNames(bList);
       } catch (e) {
-        showAlert('Error', e?.message || 'Failed to load.');
+        showAlert('Error', e?.msg || 'Failed to load.');
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -127,9 +129,9 @@ export default function GroupDetailScreen({ route, navigation }) {
         setShowConfirm(false);
         setSelectedMaster(null);
         fetchAll(true);
-      } else showAlert('Error', res?.message || 'Failed to connect master.');
+      } else showAlert('Error', res?.msg || 'Failed to connect master.');
     } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
+      showAlert('Error', e?.msg || 'Network error.');
     } finally {
       setConfirmLoading(false);
     }
@@ -141,11 +143,12 @@ export default function GroupDetailScreen({ route, navigation }) {
       {
         text: 'Disconnect',
         style: 'destructive',
-        onPress: async () => {
-          const res = await disconnectMaster(groupId);
-          if (res?.status === true) fetchAll(true);
-          else showAlert('Error', res?.message || 'Failed.');
-        },
+        onPress: () =>
+          withLock(async () => {
+            const res = await disconnectMaster(groupId);
+            if (res?.status === true) fetchAll(true);
+            else showAlert('Error', res?.msg || 'Failed.');
+          }),
       },
     ]);
   };
@@ -158,35 +161,37 @@ export default function GroupDetailScreen({ route, navigation }) {
         { text: 'No', style: 'cancel' },
         {
           text: 'Yes',
-          onPress: async () => {
-            try {
-              await updateGroupTrading(groupId, val);
+          onPress: () =>
+            withLock(async () => {
+              try {
+                await updateGroupTrading(groupId, val);
 
-              // ✅ update UI after success
-              setGroup(prev => ({ ...prev, trading_flag: val }));
+                // ✅ update UI after success
+                setGroup(prev => ({ ...prev, trading_flag: val }));
 
-              // ✅ refresh list if needed
-              fetchAll(true);
-            } catch (e) {
-              showAlert('Error', 'Failed to update trading flag');
-            }
-          },
+                // ✅ refresh list if needed
+                fetchAll(true);
+              } catch (e) {
+                showAlert('Error', 'Failed to update trading flag');
+              }
+            }),
         },
       ],
     );
   };
 
-  const handleAddChild = async broker => {
-    try {
-      const res = await addChildBroker(groupId, broker.broker_id);
-      if (res?.status === true) {
-        setShowAddChild(false);
-        fetchAll(true);
-      } else showAlert('Error', res?.message || 'Failed to add child.');
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    }
-  };
+  const handleAddChild = () =>
+    withLock(async broker => {
+      try {
+        const res = await addChildBroker(groupId, broker.broker_id);
+        if (res?.status === true) {
+          setShowAddChild(false);
+          fetchAll(true);
+        } else showAlert('Error', res?.msg || 'Failed to add child.');
+      } catch (e) {
+        showAlert('Error', e?.msg || 'Network error.');
+      }
+    });
 
   const hasMaster = !!(group?.master_broker_id || group?.master_broker_name);
   const existingIds = children.map(c => c.broker_id);

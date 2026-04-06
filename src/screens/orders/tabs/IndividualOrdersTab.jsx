@@ -64,7 +64,7 @@ export default function IndividualOrdersTab() {
       const res = await getIndividualOrderHistory(0, 50);
       setOrders(parseList(res));
     } catch (e) {
-      showAlert('Error', e?.message || 'Failed to load individual orders.');
+      showAlert('Error', e?.msg || 'Failed to load individual orders.');
     } finally {
       setLoading(false);
       setRefreshing(false);

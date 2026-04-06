@@ -14,6 +14,7 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { modifyOrder } from '../../services/accountService';
 import { useAlert } from '../common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 export default function EditOrderModal({
   visible,
@@ -26,6 +27,7 @@ export default function EditOrderModal({
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(null);
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
   useEffect(() => {
     if (visible && position) {
@@ -34,29 +36,30 @@ export default function EditOrderModal({
     }
   }, [visible, position]);
 
-  const handleSubmit = async () => {
-    setLoading(true);
-    try {
-      const res = await modifyOrder({
-        ticket_id: position?.ticket || position?.id,
-        broker_id: brokerId,
-        price: position?.price_open ?? position?.price ?? 0,
-        sl: sl.trim() ? Number(sl) : 0,
-        tp: tp.trim() ? Number(tp) : 0,
-      });
-      if (res?.status === true) {
-        showAlert('Success', 'Order modified successfully!');
-        onClose(true);
-      } else {
-        showAlert('Error', res?.message || 'Failed to modify order.');
+  const handleSubmit = () => {
+    withLock(async () => {
+      setLoading(true);
+      try {
+        const res = await modifyOrder({
+          ticket_id: position?.ticket || position?.id,
+          broker_id: brokerId,
+          price: position?.price_open ?? position?.price ?? 0,
+          sl: sl.trim() ? Number(sl) : 0,
+          tp: tp.trim() ? Number(tp) : 0,
+        });
+        if (res?.status === true) {
+          showAlert('Success', 'Order modified successfully!');
+          onClose(true);
+        } else {
+          showAlert('Error', res?.msg || 'Failed to modify order.');
+        }
+      } catch (e) {
+        showAlert('Error', e?.msg || 'Network error.');
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    } finally {
-      setLoading(false);
-    }
+    });
   };
-
   const handleClose = () => {
     setSl('');
     setTp('');

@@ -30,6 +30,7 @@ import { getUserIdFromToken } from '../../services/profileService';
 import { common } from '../../styles/common.styles';
 import { formatDateTime } from './../../utils/date';
 import { useAlert } from '../../components/common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 const WALLET_COUNTRIES = [
   { label: 'INDIA', value: 'INDIA' },
@@ -87,6 +88,7 @@ export default function WalletScreen() {
   const [showPayment, setShowPayment] = useState(false);
   const [txSearch, setTxSearch] = useState('');
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
   const debounceRef = useRef(null);
 
@@ -190,36 +192,37 @@ export default function WalletScreen() {
         });
 
   // ── Make payment ──────────────────────────────────────────────
-  const handleAdd = async () => {
-    if (!amount.trim() || isNaN(Number(amount)) || Number(amount) <= 0) {
-      showAlert('Error', 'Enter a valid amount.');
-      return;
-    }
-    setPaying(true);
-    try {
-      const userId = await getUserIdFromToken();
-      const res = await makePayment(userId, amount, country.value);
-      const html = res?.html || res?.data?.html || null;
-
-      if (html) {
-        setPaymentHtml(html);
-        setShowPayment(true);
-        setAmount('');
-        setInrText('');
-      } else if (res?.status === true) {
-        showAlert('Success', res?.message || 'Payment initiated!');
-        setAmount('');
-        setInrText('');
-        fetchLedger(true);
-      } else {
-        showAlert('Error', res?.message || 'Payment failed.');
+  const handleAdd = () =>
+    withLock(async () => {
+      if (!amount.trim() || isNaN(Number(amount)) || Number(amount) <= 0) {
+        showAlert('Error', 'Enter a valid amount.');
+        return;
       }
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    } finally {
-      setPaying(false);
-    }
-  };
+      setPaying(true);
+      try {
+        const userId = await getUserIdFromToken();
+        const res = await makePayment(userId, amount, country.value);
+        const html = res?.html || res?.data?.html || null;
+
+        if (html) {
+          setPaymentHtml(html);
+          setShowPayment(true);
+          setAmount('');
+          setInrText('');
+        } else if (res?.status === true) {
+          showAlert('Success', res?.msg || 'Payment initiated!');
+          setAmount('');
+          setInrText('');
+          fetchLedger(true);
+        } else {
+          showAlert('Error', res?.msg || 'Payment failed.');
+        }
+      } catch (e) {
+        showAlert('Error', e?.msg || 'Network error.');
+      } finally {
+        setPaying(false);
+      }
+    });
 
   const closePayment = () => {
     setShowPayment(false);

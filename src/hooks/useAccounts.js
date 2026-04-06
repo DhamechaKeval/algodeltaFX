@@ -9,6 +9,7 @@ import {
   refreshAccount,
 } from '../services/accountService';
 import { useAlert } from '../components/common/AlertContext';
+import { useLoadingLock } from '../context/LoadingLockContext';
 
 export const useAccounts = () => {
   const [accounts, setAccounts] = useState([]);
@@ -20,6 +21,7 @@ export const useAccounts = () => {
   const [showModal, setShowModal] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
   // ── Fetch all ─────────────────────────────────────────────────
   const fetchAccounts = useCallback(async (isRefresh = false) => {
@@ -78,11 +80,11 @@ export const useAccounts = () => {
         const res = await updateTradingFlag(broker_id, next);
         if (res?.status !== true) {
           updateLocal(broker_id, { main_trading_flag: current });
-          showAlert('Error', res?.message || 'Failed to update trading.');
+          showAlert('Error', res?.msg || 'Failed to update trading.');
         }
       } catch (e) {
         updateLocal(broker_id, { main_trading_flag: current });
-        showAlert('Error', e?.message || 'Network error.');
+        showAlert('Error', e?.msg || 'Network error.');
       }
     },
     [updateLocal],
@@ -97,11 +99,11 @@ export const useAccounts = () => {
         const res = await setSlTp(broker_id, next);
         if (res?.status !== true) {
           updateLocal(broker_id, { is_sl_tp_set: current });
-          showAlert('Error', res?.message || 'Failed to update SL/TP.');
+          showAlert('Error', res?.msg || 'Failed to update SL/TP.');
         }
       } catch (e) {
         updateLocal(broker_id, { is_sl_tp_set: current });
-        showAlert('Error', e?.message || 'Network error.');
+        showAlert('Error', e?.msg || 'Network error.');
       }
     },
     [updateLocal],
@@ -116,7 +118,7 @@ export const useAccounts = () => {
         const res = await updateAutoRenew(broker_id, next);
         if (res?.status !== true) {
           updateLocal(broker_id, { auto_renew: current });
-          showAlert('Error', res?.message || 'Failed to update auto renew.');
+          showAlert('Error', res?.msg || 'Failed to update auto renew.');
         }
       } catch (e) {
         updateLocal(broker_id, { auto_renew: current });
@@ -127,15 +129,16 @@ export const useAccounts = () => {
 
   // ── Refresh single account ────────────────────────────────────
   const handleRefreshAccount = useCallback(
-    async broker_id => {
-      try {
-        await refreshAccount(broker_id);
-        await fetchAccounts(true);
-      } catch (e) {
-        showAlert('Error', e?.message || 'Failed to refresh account.');
-      }
-    },
-    [fetchAccounts],
+    broker_id =>
+      withLock(async () => {
+        try {
+          await refreshAccount(broker_id);
+          await fetchAccounts(true);
+        } catch (e) {
+          showAlert('Error', e?.msg || 'Failed to refresh account.');
+        }
+      }),
+    [fetchAccounts, withLock],
   );
 
   // ── Delete ────────────────────────────────────────────────────
@@ -149,23 +152,25 @@ export const useAccounts = () => {
           {
             text: 'Delete',
             style: 'destructive',
-            onPress: async () => {
-              try {
-                const res = await deleteAccount(broker_id);
-                if (res?.status === true) {
-                  fetchAccounts(true);
-                } else {
-                  showAlert('Error', res?.message || 'Failed to delete.');
+            onPress: () =>
+              withLock(async () => {
+                // ← only wrap the onPress
+                try {
+                  const res = await deleteAccount(broker_id);
+                  if (res?.status === true) {
+                    fetchAccounts(true);
+                  } else {
+                    showAlert('Error', res?.msg || 'Failed to delete.');
+                  }
+                } catch (e) {
+                  showAlert('Error', e?.msg || 'Network error.');
                 }
-              } catch (e) {
-                showAlert('Error', e?.message || 'Network error.');
-              }
-            },
+              }),
           },
         ],
       );
     },
-    [fetchAccounts],
+    [fetchAccounts, withLock],
   );
 
   // ── Add account ───────────────────────────────────────────────
@@ -181,10 +186,10 @@ export const useAccounts = () => {
         }
         return {
           success: false,
-          message: res?.message || 'Failed to add account.',
+          message: res?.msg || 'Failed to add account.',
         };
       } catch (e) {
-        return { success: false, message: e?.message || 'Network error.' };
+        return { success: false, message: e?.msg || 'Network error.' };
       } finally {
         setAddLoading(false);
       }

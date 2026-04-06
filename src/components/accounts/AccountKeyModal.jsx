@@ -17,12 +17,14 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { updateCallbackUrl } from '../../services/accountService';
 import { useAlert } from '../common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 const DOC_URL =
   'https://docs.algodeltafx.com/#7319f8b2-f790-4587-a22d-48e9c338cd2d';
 
 export default function AccountKeyModal({ visible, onClose, item }) {
   const [showKey, setShowKey] = useState(false);
+  const { withLock } = useLoadingLock();
   const [callbackOn, setCallbackOn] = useState(!!item?.broker_callback_url);
   const [callbackUrl, setCallbackUrl] = useState(
     item?.broker_callback_url || '',
@@ -50,26 +52,28 @@ export default function AccountKeyModal({ visible, onClose, item }) {
     if (!val) setCallbackUrl('');
   };
 
-  const handleSave = async () => {
-    if (callbackOn && !callbackUrl.trim()) {
-      showAlert('Error', 'Please enter a callback URL.');
-      return;
-    }
-    setSaving(true);
-    try {
-      const url = callbackOn && callbackUrl.trim() ? callbackUrl.trim() : null;
-      const res = await updateCallbackUrl(item.broker_id, url);
-      if (res?.status === true) {
-        showAlert('Success', 'Callback URL updated.');
-      } else {
-        showAlert('Error', res?.message || 'Failed to update.');
+  const handleSave = () =>
+    withLock(async () => {
+      if (callbackOn && !callbackUrl.trim()) {
+        showAlert('Error', 'Please enter a callback URL.');
+        return;
       }
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    } finally {
-      setSaving(false);
-    }
-  };
+      setSaving(true);
+      try {
+        const url =
+          callbackOn && callbackUrl.trim() ? callbackUrl.trim() : null;
+        const res = await updateCallbackUrl(item.broker_id, url);
+        if (res?.status === true) {
+          showAlert('Success', 'Callback URL updated.');
+        } else {
+          showAlert('Error', res?.msg || 'Failed to update.');
+        }
+      } catch (e) {
+        showAlert('Error', e?.msg || 'Network error.');
+      } finally {
+        setSaving(false);
+      }
+    });
 
   return (
     <Modal

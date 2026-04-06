@@ -17,6 +17,7 @@ import { spacing } from '../../theme/spacing';
 import { placeOrder } from '../../services/accountService';
 import { apiPost } from '../../services/api';
 import { useAlert } from '../common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 const ORDER_TYPES = [
   { label: 'BUY', value: 0 },
@@ -50,38 +51,39 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
   const [focused, setFocused] = useState(null);
   const debounceRef = useRef(null);
   const { showAlert } = useAlert();
-
+  const { withLock } = useLoadingLock();
   const showPrice = needsPrice.includes(orderType);
   const showStopLimitPrice = needsStopLimitPrice.includes(orderType);
 
-  const doSearch = async query => {
-    if (!query.trim()) {
-      setSuggestions([]);
-      setShowSuggest(false);
-      return;
-    }
-    setSearching(true);
-    try {
-      const res = await apiPost('/symbols/searchsymbol', {
-        symbol: query.toLowerCase(),
-      });
-      // API returns: { status: true, data: [{ basename: "BTCUSD" }, ...] }
-      const raw = Array.isArray(res?.data)
-        ? res.data
-        : Array.isArray(res)
-        ? res
-        : [];
-      const list = raw.map(s => s?.basename || '').filter(Boolean);
-      setSuggestions(list);
-      setShowSuggest(list.length > 0);
-    } catch {
-      setSuggestions([]);
-      setShowSuggest(false);
-    } finally {
-      setSearching(false);
-    }
+  const doSearch = () => {
+    withLock(async query => {
+      if (!query.trim()) {
+        setSuggestions([]);
+        setShowSuggest(false);
+        return;
+      }
+      setSearching(true);
+      try {
+        const res = await apiPost('/symbols/searchsymbol', {
+          symbol: query.toLowerCase(),
+        });
+        // API returns: { status: true, data: [{ basename: "BTCUSD" }, ...] }
+        const raw = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res)
+          ? res
+          : [];
+        const list = raw.map(s => s?.basename || '').filter(Boolean);
+        setSuggestions(list);
+        setShowSuggest(list.length > 0);
+      } catch {
+        setSuggestions([]);
+        setShowSuggest(false);
+      } finally {
+        setSearching(false);
+      }
+    });
   };
-
   const handleSymbolChange = text => {
     const upper = text.toUpperCase();
     setSymbol(upper);
@@ -100,54 +102,55 @@ export default function PlaceOrderModal({ visible, onClose, brokerId }) {
     setSuggestions([]);
   };
 
-  const handlePlaceOrder = async () => {
-    if (!symbol.trim()) {
-      showAlert('Error', 'Symbol is required.');
-      return;
-    }
-    if (!volume.trim()) {
-      showAlert('Error', 'Volume is required.');
-      return;
-    }
-    if (isNaN(Number(volume)) || Number(volume) <= 0) {
-      showAlert('Error', 'Enter a valid volume.');
-      return;
-    }
-    if (showPrice && !price.trim()) {
-      showAlert('Error', 'Price is required for this order type.');
-      return;
-    }
-    if (showStopLimitPrice && !stopLimitPrice.trim()) {
-      showAlert('Error', 'Stop Limit Price is required for this order type.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const body = {
-        symbol: symbol.trim().toUpperCase(),
-        type: orderType,
-        volume: Number(volume),
-        broker_id: brokerId,
-        ...(showPrice && price.trim() && { price: Number(price) }),
-        ...(showStopLimitPrice &&
-          stopLimitPrice.trim() && { stoplimit: Number(stopLimitPrice) }),
-        ...(sl.trim() && { sl: Number(sl) }),
-        ...(tp.trim() && { tp: Number(tp) }),
-      };
-      const res = await placeOrder(body);
-      if (res?.status === true) {
-        showAlert('Success', 'Order placed successfully!');
-        handleClose();
-      } else {
-        showAlert('Error', res?.message || 'Failed to place order.');
+  const handlePlaceOrder = () => {
+    withLock(async () => {
+      if (!symbol.trim()) {
+        showAlert('Error', 'Symbol is required.');
+        return;
       }
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    } finally {
-      setLoading(false);
-    }
+      if (!volume.trim()) {
+        showAlert('Error', 'Volume is required.');
+        return;
+      }
+      if (isNaN(Number(volume)) || Number(volume) <= 0) {
+        showAlert('Error', 'Enter a valid volume.');
+        return;
+      }
+      if (showPrice && !price.trim()) {
+        showAlert('Error', 'Price is required for this order type.');
+        return;
+      }
+      if (showStopLimitPrice && !stopLimitPrice.trim()) {
+        showAlert('Error', 'Stop Limit Price is required for this order type.');
+        return;
+      }
+      setLoading(true);
+      try {
+        const body = {
+          symbol: symbol.trim().toUpperCase(),
+          type: orderType,
+          volume: Number(volume),
+          broker_id: brokerId,
+          ...(showPrice && price.trim() && { price: Number(price) }),
+          ...(showStopLimitPrice &&
+            stopLimitPrice.trim() && { stoplimit: Number(stopLimitPrice) }),
+          ...(sl.trim() && { sl: Number(sl) }),
+          ...(tp.trim() && { tp: Number(tp) }),
+        };
+        const res = await placeOrder(body);
+        if (res?.status === true) {
+          showAlert('Success', 'Order placed successfully!');
+          handleClose();
+        } else {
+          showAlert('Error', res?.msg || 'Failed to place order.');
+        }
+      } catch (e) {
+        showAlert('Error', e?.msg || 'Network error.');
+      } finally {
+        setLoading(false);
+      }
+    });
   };
-
   const handleClose = () => {
     setSymbol('');
     setVolume('');

@@ -13,6 +13,7 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { getBrokerNames } from '../../services/copyTradeService';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 const LOT_METHODS = [
   { key: 'multiplier', label: 'Multiplier', default: '1' },
@@ -39,6 +40,7 @@ export default function AddChildModal({
   const [lotValue, setLotValue] = useState('1');
   const [valFocused, setValFocused] = useState(false);
   const [adding, setAdding] = useState(false);
+  const { withLock } = useLoadingLock();
 
   useEffect(() => {
     if (!visible) {
@@ -78,24 +80,26 @@ export default function AddChildModal({
       )
     : brokers;
 
-  const handleAdd = async () => {
-    if (!selectedBroker) return;
+  const handleAdd = () => {
+    withLock(async () => {
+      if (!selectedBroker) return;
 
-    // Validate value for non-balance-based
-    if (lotMethod !== 'balance_based') {
-      const numVal = Number(lotValue);
-      if (!lotValue.trim() || isNaN(numVal) || numVal <= 0) {
-        return;
+      // Validate value for non-balance-based
+      if (lotMethod !== 'balance_based') {
+        const numVal = Number(lotValue);
+        if (!lotValue.trim() || isNaN(numVal) || numVal <= 0) {
+          return;
+        }
       }
-    }
 
-    setAdding(true);
-    await onAdd(
-      selectedBroker,
-      lotMethod !== 'balance_based' ? Number(lotValue) : 0,
-      lotMethod,
-    );
-    setAdding(false);
+      setAdding(true);
+      await onAdd(
+        selectedBroker,
+        lotMethod !== 'balance_based' ? Number(lotValue) : 0,
+        lotMethod,
+      );
+      setAdding(false);
+    });
   };
 
   return (

@@ -64,7 +64,7 @@ export default function GroupOrdersTab({ navigation }) {
       const res = await getGroupOrderHistory(0, 50);
       setOrders(parseList(res));
     } catch (e) {
-      showAlert('Error', e?.message || 'Failed to load group orders.');
+      showAlert('Error', e?.msg || 'Failed to load group orders.');
     } finally {
       setLoading(false);
       setRefreshing(false);

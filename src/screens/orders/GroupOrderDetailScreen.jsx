@@ -53,7 +53,7 @@ export default function GroupOrderDetailScreen({ route, navigation }) {
           : [];
         setOrders(list);
       } catch (e) {
-        showAlert('Error', e?.message || 'Failed to load orders.');
+        showAlert('Error', e?.msg || 'Failed to load orders.');
       } finally {
         setLoading(false);
         setRefreshing(false);

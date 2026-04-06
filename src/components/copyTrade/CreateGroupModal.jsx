@@ -11,6 +11,7 @@ import {
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 export default function CreateGroupModal({
   visible,
@@ -21,18 +22,20 @@ export default function CreateGroupModal({
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
+  const { withLock } = useLoadingLock();
   const isEdit = !!editGroup;
 
   useEffect(() => {
     if (visible) setName(editGroup?.group_name || '');
   }, [visible, editGroup]);
 
-  const handleSubmit = async () => {
-    if (!name.trim()) return;
-    setLoading(true);
-    await onSubmit(name.trim());
-    setLoading(false);
-  };
+  const handleSubmit = () =>
+    withLock(async () => {
+      if (!name.trim()) return;
+      setLoading(true);
+      await onSubmit(name.trim());
+      setLoading(false);
+    });
 
   return (
     <Modal

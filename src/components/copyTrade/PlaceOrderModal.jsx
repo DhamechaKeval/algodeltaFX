@@ -15,9 +15,10 @@ import Button from '../common/Button';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
-import { placeOrder } from '../../services/accountService';
 import { apiPost } from '../../services/api';
 import { useAlert } from '../common/AlertContext';
+import { placeGroupOrder } from '../../services/copyTradeService';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 const ORDER_TYPES = [
   { label: 'BUY', value: 0 },
@@ -149,45 +150,45 @@ export default function PlaceOrderModal({
   const [showTypes, setShowTypes] = useState(false);
   const [focused, setFocused] = useState(null);
   const { showAlert } = useAlert();
-
   const [basketEnabled, setBasketEnabled] = useState(false);
   const [basketItems, setBasketItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef(null);
+  const { withLock } = useLoadingLock();
 
-  // FIX: use form.orderType (not emptyForm.orderType)
   const showPrice = needsPrice.includes(form.orderType);
   const showSLP = needsStopLimitPrice.includes(form.orderType);
 
   const setField = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
-  // ── symbol search ───────────────────────────────────────────────────────────
-  const doSearch = async query => {
-    if (!query.trim()) {
-      setSuggestions([]);
-      setShowSuggest(false);
-      return;
-    }
-    setSearching(true);
-    try {
-      const res = await apiPost('/symbols/searchsymbol', {
-        symbol: query.toLowerCase(),
-      });
-      const raw = Array.isArray(res?.data)
-        ? res.data
-        : Array.isArray(res)
-        ? res
-        : [];
-      const list = raw.map(s => s?.basename || '').filter(Boolean);
-      setSuggestions(list);
-      setShowSuggest(list.length > 0);
-    } catch {
-      setSuggestions([]);
-      setShowSuggest(false);
-    } finally {
-      setSearching(false);
-    }
-  };
+  // ── symbol search ──────────────────────────────────────────────────────────
+  const doSearch = () =>
+    withLock(async query => {
+      if (!query.trim()) {
+        setSuggestions([]);
+        setShowSuggest(false);
+        return;
+      }
+      setSearching(true);
+      try {
+        const res = await apiPost('/symbols/searchsymbol', {
+          symbol: query.toLowerCase(),
+        });
+        const raw = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res)
+          ? res
+          : [];
+        const list = raw.map(s => s?.basename || '').filter(Boolean);
+        setSuggestions(list);
+        setShowSuggest(list.length > 0);
+      } catch {
+        setSuggestions([]);
+        setShowSuggest(false);
+      } finally {
+        setSearching(false);
+      }
+    });
 
   const handleSymbolChange = text => {
     const upper = text.toUpperCase();
@@ -207,7 +208,7 @@ export default function PlaceOrderModal({
     setSuggestions([]);
   };
 
-  // ── validation ──────────────────────────────────────────────────────────────
+  // ── validation ─────────────────────────────────────────────────────────────
   const validateForm = () => {
     if (!form.symbol.trim()) {
       showAlert('Error', 'Symbol is required.');
@@ -232,7 +233,7 @@ export default function PlaceOrderModal({
     return true;
   };
 
-  // ── basket ops ──────────────────────────────────────────────────────────────
+  // ── basket ops ─────────────────────────────────────────────────────────────
   const handleAddToBasket = () => {
     if (!validateForm()) return;
     const newItem = { ...form, id: Date.now(), status: STATUS.PENDING };
@@ -263,99 +264,102 @@ export default function PlaceOrderModal({
   const handleDeleteBasketItem = index =>
     setBasketItems(prev => prev.filter((_, i) => i !== index));
 
-  // ── place order ─────────────────────────────────────────────────────────────
-  const buildSingleBody = f => ({
-    symbol: f.symbol.trim().toUpperCase(),
-    type: f.orderType,
-    volume: Number(f.volume),
-    broker_id: brokerId,
-    ...(needsPrice.includes(f.orderType) &&
-      f.price.trim() && { price: Number(f.price) }),
-    ...(needsStopLimitPrice.includes(f.orderType) &&
-      f.stopLimitPrice.trim() && { stoplimit: Number(f.stopLimitPrice) }),
-    ...(f.sl.trim() && { sl: Number(f.sl) }),
-    ...(f.tp.trim() && { tp: Number(f.tp) }),
-  });
+  // ── place order ────────────────────────────────────────────────────────────
+  const handlePlaceOrder = () =>
+    withLock(async () => {
+      // ── basket mode ──
+      if (basketEnabled) {
+        if (basketItems.length === 0) {
+          showAlert('Error', 'Basket is empty. Add at least one order.');
+          return;
+        }
+        setLoading(true);
+        try {
+          const delay = parseInt(form.orderDelay, 10) || 1000;
+          const updatedItems = [...basketItems];
 
-  const handlePlaceOrder = async () => {
-    if (basketEnabled) {
-      if (basketItems.length === 0) {
-        showAlert('Error', 'Basket is empty. Add at least one order.');
+          for (let i = 0; i < updatedItems.length; i++) {
+            const item = updatedItems[i];
+            try {
+              const body = {
+                group_id: groupId,
+                symbol: item.symbol.trim().toUpperCase(),
+                type: item.orderType,
+                volume: Number(item.volume),
+                ...(needsPrice.includes(item.orderType) &&
+                  item.price && { price: Number(item.price) }),
+                ...(needsStopLimitPrice.includes(item.orderType) &&
+                  item.stopLimitPrice && {
+                    stoplimit: Number(item.stopLimitPrice),
+                  }),
+                ...(item.sl && { sl: Number(item.sl) }),
+                ...(item.tp && { tp: Number(item.tp) }),
+              };
+              const res = await apiPost('/users/group/placegrouporder', body);
+              updatedItems[i] = {
+                ...item,
+                status: res?.status === true ? STATUS.SUCCESS : STATUS.FAILED,
+              };
+            } catch {
+              updatedItems[i] = { ...item, status: STATUS.FAILED };
+            }
+            setBasketItems([...updatedItems]);
+            if (i < updatedItems.length - 1) {
+              await new Promise(r => setTimeout(r, delay));
+            }
+          }
+
+          const failed = updatedItems.filter(
+            it => it.status === STATUS.FAILED,
+          ).length;
+          if (failed === 0) {
+            showAlert('Success', 'All basket orders placed successfully!');
+            handleClose();
+          } else {
+            showAlert(
+              'Partial Success',
+              `${updatedItems.length - failed} succeeded, ${failed} failed.`,
+            );
+          }
+        } catch (e) {
+          showAlert('Error', e?.msg || 'Network error.');
+        } finally {
+          setLoading(false);
+        }
         return;
       }
+
+      // ── single order ──
+      if (!validateForm()) return;
       setLoading(true);
       try {
-        const delay = parseInt(form.orderDelay, 10) || 1000;
-        const updatedItems = [...basketItems];
-
-        for (let i = 0; i < updatedItems.length; i++) {
-          const item = updatedItems[i];
-          try {
-            const body = {
-              group_id: groupId,
-              symbol: item.symbol.trim().toUpperCase(),
-              type: item.orderType,
-              volume: Number(item.volume),
-              ...(needsPrice.includes(item.orderType) &&
-                item.price && { price: Number(item.price) }),
-              ...(needsStopLimitPrice.includes(item.orderType) &&
-                item.stopLimitPrice && {
-                  stoplimit: Number(item.stopLimitPrice),
-                }),
-              ...(item.sl && { sl: Number(item.sl) }),
-              ...(item.tp && { tp: Number(item.tp) }),
-            };
-            const res = await apiPost('/users/group/placegrouporder', body);
-            updatedItems[i] = {
-              ...item,
-              status: res?.status === true ? STATUS.SUCCESS : STATUS.FAILED,
-            };
-          } catch {
-            updatedItems[i] = { ...item, status: STATUS.FAILED };
-          }
-          setBasketItems([...updatedItems]);
-          if (i < updatedItems.length - 1) {
-            await new Promise(r => setTimeout(r, delay));
-          }
-        }
-
-        const failed = updatedItems.filter(
-          it => it.status === STATUS.FAILED,
-        ).length;
-        if (failed === 0) {
-          showAlert('Success', 'All basket orders placed successfully!');
+        const body = {
+          group_id: groupId,
+          symbol: form.symbol.trim().toUpperCase(),
+          type: form.orderType,
+          volume: Number(form.volume),
+          ...(showPrice && form.price.trim() && { price: Number(form.price) }),
+          ...(showSLP &&
+            form.stopLimitPrice.trim() && {
+              stoplimit: Number(form.stopLimitPrice),
+            }),
+          ...(form.sl.trim() && { sl: Number(form.sl) }),
+          ...(form.tp.trim() && { tp: Number(form.tp) }),
+        };
+        const res = await placeGroupOrder(body);
+        if (res?.status === true) {
+          showAlert('Success', 'Order placed successfully!');
           handleClose();
         } else {
-          showAlert(
-            'Partial Success',
-            `${updatedItems.length - failed} succeeded, ${failed} failed.`,
-          );
+          showAlert('Error', res?.msg || 'Failed to place order.');
+          console.log('Full response:', JSON.stringify(res));
         }
       } catch (e) {
-        showAlert('Error', e?.message || 'Network error.');
+        showAlert('Error', e?.msg || 'Network error.');
       } finally {
         setLoading(false);
       }
-      return;
-    }
-
-    // single order
-    if (!validateForm()) return;
-    setLoading(true);
-    try {
-      const res = await placeOrder(buildSingleBody(form));
-      if (res?.status === true) {
-        showAlert('Success', 'Order placed successfully!');
-        handleClose();
-      } else {
-        showAlert('Error', res?.message || 'Failed to place order.');
-      }
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
 
   const handleClose = () => {
     setForm(emptyForm());
@@ -370,7 +374,6 @@ export default function PlaceOrderModal({
   };
 
   const iBox = name => [s.inputBox, focused === name && s.inputBoxFocused];
-  // FIX: use form.orderType via getOrderTypeLabel
   const selectedTypeLabel = getOrderTypeLabel(form.orderType);
 
   return (
@@ -454,7 +457,6 @@ export default function PlaceOrderModal({
                     setShowSuggest(false);
                   }}
                 >
-                  {/* FIX: show selectedTypeLabel derived from form.orderType */}
                   <Text
                     style={[
                       s.inputText,
@@ -464,7 +466,6 @@ export default function PlaceOrderModal({
                   >
                     {selectedTypeLabel}
                   </Text>
-                  {/* FIX: check form.orderType, reset to 0 on clear */}
                   {form.orderType !== 0 && (
                     <TouchableOpacity
                       onPress={() => {
@@ -500,11 +501,9 @@ export default function PlaceOrderModal({
                           i === ORDER_TYPES.length - 1 && {
                             borderBottomWidth: 0,
                           },
-                          // FIX: compare form.orderType
                           form.orderType === t.value && s.dropItemActive,
                         ]}
                         onPress={() => {
-                          // FIX: removed stray setOrderType() call
                           setField('orderType', t.value);
                           setField('price', '');
                           setField('stopLimitPrice', '');
@@ -529,7 +528,6 @@ export default function PlaceOrderModal({
 
               <View style={s.col}>
                 <Text style={s.label}>Volume *</Text>
-                {/* FIX: restored missing style/placeholder/keyboardType/focus props */}
                 <View style={iBox('volume')}>
                   <TextInput
                     style={[s.inputText, { flex: 1 }]}
@@ -545,7 +543,7 @@ export default function PlaceOrderModal({
               </View>
             </View>
 
-            {/* Price + Stop Limit Price (types 6, 7) */}
+            {/* Price for types 6, 7 (needs both price + stop limit) */}
             {showSLP && (
               <View style={s.row}>
                 <View style={s.col}>
@@ -581,7 +579,7 @@ export default function PlaceOrderModal({
               </View>
             )}
 
-            {/* FIX: Price only for types 2,3,4,5 (showPrice && !showSLP was missing entirely) */}
+            {/* Price only for types 2,3,4,5 */}
             {showPrice && !showSLP && (
               <View style={s.row}>
                 <View style={s.col}>
@@ -607,7 +605,6 @@ export default function PlaceOrderModal({
             <View style={s.row}>
               <View style={s.col}>
                 <Text style={s.label}>Stop Loss (SL)</Text>
-                {/* FIX: restored missing style/placeholder/keyboardType/focus props */}
                 <View style={iBox('sl')}>
                   <TextInput
                     style={[s.inputText, { flex: 1 }]}
@@ -623,7 +620,6 @@ export default function PlaceOrderModal({
               </View>
               <View style={s.col}>
                 <Text style={s.label}>Target Profit (TP)</Text>
-                {/* FIX: restored missing style/placeholder/keyboardType/focus props */}
                 <View style={iBox('tp')}>
                   <TextInput
                     style={[s.inputText, { flex: 1 }]}
@@ -762,7 +758,11 @@ const br = StyleSheet.create({
     borderBottomColor: colors.border,
     paddingVertical: 10,
   },
-  cell: { paddingHorizontal: 8, justifyContent: 'center' , color: colors.textPrimary },
+  cell: {
+    paddingHorizontal: 8,
+    justifyContent: 'center',
+    color: colors.textPrimary,
+  },
   cellId: { width: 32 },
   cellAction: { width: 80, flexDirection: 'row', alignItems: 'center' },
   cellSymbol: { width: 80 },

@@ -63,7 +63,7 @@ export default function OrderDetailsTab() {
       const res = await getOrdersHistory(0, 50);
       setOrders(parseList(res));
     } catch (e) {
-      showAlert('Error', e?.message || 'Failed to load order details.');
+      showAlert('Error', e?.msg || 'Failed to load order details.');
     } finally {
       setLoading(false);
       setRefreshing(false);

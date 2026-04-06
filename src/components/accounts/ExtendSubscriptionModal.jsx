@@ -6,6 +6,7 @@ import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { extendBroker } from '../../services/accountService';
 import { useAlert } from '../common/AlertContext';
+import { useLoadingLock } from '../../context/LoadingLockContext';
 
 const DURATIONS = [
   { label: 'Free Demo', value: 'free_demo' },
@@ -19,23 +20,25 @@ export default function ExtendSubscriptionModal({ visible, onClose, item }) {
   const [duration, setDuration] = useState('free_demo');
   const [loading, setLoading] = useState(false);
   const { showAlert } = useAlert();
+  const { withLock } = useLoadingLock();
 
-  const handleExtend = async () => {
-    setLoading(true);
-    try {
-      const res = await extendBroker(item.broker_id, duration);
-      if (res?.status === true) {
-        showAlert('Success', 'Subscription extended successfully!');
-        onClose(true);
-      } else {
-        showAlert('Error', res?.message || 'Failed to extend subscription.');
+  const handleExtend = () =>
+    withLock(async () => {
+      setLoading(true);
+      try {
+        const res = await extendBroker(item.broker_id, duration);
+        if (res?.status === true) {
+          showAlert('Success', 'Subscription extended successfully!');
+          onClose(true);
+        } else {
+          showAlert('Error', res?.msg || 'Failed to extend subscription.');
+        }
+      } catch (e) {
+        showAlert('Error', e?.msg || 'Network error.');
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      showAlert('Error', e?.message || 'Network error.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
 
   return (
     <Modal
